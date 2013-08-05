@@ -48,9 +48,10 @@ local function time(n, f)
 end
 
 local function updateprovider(provider)
+	log.info(_NAME..": updating "..provider)
 	local channels = {}
 	local ok, err = time("epg."..provider..".channels.update", function ()
-		return epg[provider].channels.update(function (channel) 
+		return epg[provider].channels.update(function (channel)
 			table.insert(channels, channel)
 			return true
 		end)
@@ -59,7 +60,7 @@ local function updateprovider(provider)
 		return nil, err
 	end
 	-- insert channels to DB
-	_G._rdb.epg[provider].channels(channels)
+	_G._rdb.epg[provider].channels(unpack(channels))
 
 	for i = 1, #channels do
 		channels[i] = channels[i].id

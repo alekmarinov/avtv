@@ -15,8 +15,8 @@ local string = require "lrun.util.string"
 local config = require "avtv.config"
 local log    = require "avtv.log"
 
-local io, os, type, assert, ipairs =
-      io, os, type, assert, ipairs
+local io, os, type, assert, ipairs, table =
+      io, os, type, assert, ipairs, table
 local print, pairs = print, pairs
 
 module "avtv.provider.wilmaa.channels"
@@ -74,14 +74,44 @@ function update(sink)
 		return nil, err
 	end
 	for i, v in ipairs(dom) do
-		local tag = string.lower(v.tag)
-		if v.tag == "channels" then
+		if v.tag and string.lower(v.tag) == "channels" then
 			for j, k in ipairs(v) do
-				tag = string.lower(k.tag)
-				if tag == "channel" then
-					local channel = {
-						id = k.attr.id
-					}
+				if k.tag and string.lower(k.tag) == "channel" then
+					local channel = {}
+					print("channel "..k.attr.id)
+					for l, m in ipairs(k) do
+						local tag = m.tag and string.lower(m.tag)
+						if tag == "label" then
+							for n, o in ipairs(m) do
+								local tag = o.tag and string.lower(o.tag)
+								if tag == "channelgroupid" then
+									channel.id = o[1]
+								elseif tag == "name" then
+									channel.title = o[1]
+								end
+							end
+						elseif tag == "streams" then
+							for n, o in ipairs(m) do
+								if o.tag and string.lower(o.tag) == "stream" then
+									for p, q in ipairs(o) do
+										if q.tag and string.lower(q.tag) == "url" then
+											channel.streams = channel.streams or {}
+											table.insert(channel.streams, {
+												language = q.attr.lang,
+												dvr = q.attr.dvr,
+												url = q[1]
+											})
+										end
+									end									
+								end
+							end
+						end
+					end
+					-- sink channel
+					log.debug(_NAME..": extracted channel "..channel.id)
+					if not sink(channel) then
+						return nil, "interrupted"
+					end
 				end
 			end
 		end
