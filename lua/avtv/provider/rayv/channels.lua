@@ -36,7 +36,7 @@ function update(sink)
 	if not lfs.exists(channelsfile) then
 		local url = string.format(URL, config.getstring("epg.rayv.baseurl"), distributor)
 		log.debug(_NAME..": downloading `"..url.."' to `"..channelsfile.."'")
-		local ok, code, headers = dw.downloadfile(url, channelsfile)
+		local ok, code, headers = dw.download(url, channelsfile)
 		if not ok then
 			-- error downloading file
 			return nil, code
@@ -101,7 +101,7 @@ function update(sink)
 				local thumbname = channel.id.."_"..thumbnailwidth.."x"..thumbnailheight..thumbext
 				local thumbfile = lfs.concatfilenames(dirdata, thumbname)
 				log.debug(_NAME..": downloading `"..thumbnailurl.."' to `"..thumbfile.."'")
-				ok, err = dw.downloadfile(thumbnailurl, thumbfile)
+				ok, err = dw.download(thumbnailurl, thumbfile)
 				if not ok then
 					log.warn(_NAME..": "..err)
 				else

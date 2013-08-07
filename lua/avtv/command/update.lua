@@ -20,6 +20,11 @@ local epg = {
 	{
 		channels = require "avtv.provider.wilmaa.channels",
 		programs = require "avtv.provider.wilmaa.programs",
+	},
+	novabg =
+	{
+		channels = require "avtv.provider.novabg.channels",
+		programs = require "avtv.provider.novabg.programs",
 	}
 }
 
@@ -50,6 +55,9 @@ end
 local function updateprovider(provider)
 	log.info(_NAME..": updating "..provider)
 	local channels = {}
+	if not epg[provider] then
+		return nil, "no such EPG provider `"..provider.."'"
+	end
 	local ok, err = time("epg."..provider..".channels.update", function ()
 		return epg[provider].channels.update(function (channel)
 			table.insert(channels, channel)
@@ -83,9 +91,14 @@ return setmetatable(_M, { __call = function (this, ...)
 		if query then
 			return updateprovider(query)
 		else
+			local ok, err
 			for provider in pairs(epg) do
-				return updateprovider(provider)
+				ok, err = updateprovider(provider)
+				if not ok then
+					return nil, err
+				end
 			end
+			return true
 		end
 	end
 end})

@@ -47,7 +47,7 @@ function update(channels, sink)
 		if not lfs.exists(programsfile) then
 			local url = string.format(urltempl, os.date("%Y", timestamp), os.date("%m", timestamp), os.date("%d", timestamp))
 			log.debug(_NAME..": downloading `"..url.."' to `"..programsfile.."'")
-			local ok, code, headers = dw.downloadfile(url, programsfile, dwopts)
+			local ok, code, headers = dw.download(url, programsfile, dwopts)
 			if not ok then
 				-- error downloading file
 				return nil, code
@@ -123,7 +123,7 @@ function update(channels, sink)
 						if not lfs.exists(imagefile) then
 							-- download program image
 							log.debug(_NAME..": downloading `"..imageurl.."' to `"..imagefile.."'")
-							ok, code = dw.downloadfile(imageurl, imagefile, dwopts)
+							ok, code = dw.download(imageurl, imagefile, dwopts)
 							if not ok then
 								log.warn(_NAME..": error downloading "..imageurl)
 								program.image = nil
@@ -134,7 +134,7 @@ function update(channels, sink)
 							-- download program details
 							local descurl = string.gsub(descurltempl, "%[ID%]", programvalues.tele_id)
 							log.debug(_NAME..": downloading `"..descurl.."'")
-							xml, code = dw.downloadfile(descurl, nil, dwopts)
+							xml, code = dw.download(descurl, nil, dwopts)
 							if not xml then
 								log.warn(_NAME..": error downloading "..descurl)
 							else

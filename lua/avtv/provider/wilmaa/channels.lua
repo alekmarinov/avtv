@@ -32,7 +32,7 @@ function update(sink)
 	if not lfs.exists(channelsfile) then
 		local url = config.getstring("epg.wilmaa.url.channels")
 		log.debug(_NAME..": downloading `"..url.."' to `"..channelsfile.."'")
-		local ok, code, headers = dw.downloadfile(url, channelsfile, {proxy=config.get("epg.wilmaa.proxy")})
+		local ok, code, headers = dw.download(url, channelsfile, {proxy=config.get("epg.wilmaa.proxy")})
 		if not ok then
 			lfs.delete(channelsfile)
 			-- error downloading file

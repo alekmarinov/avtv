@@ -46,7 +46,7 @@ function update(channels, sink)
 	if not lfs.exists(programsfile) then
 		local url = string.format(URL, config.getstring("epg.rayv.baseurl"), table.concat(channels, ","), startsfrom, startsto, endsfrom, endsto)
 		log.debug(_NAME..": downloading `"..url.."' to `"..programsfile.."'")
-		local ok, code, headers = dw.downloadfile(url, programsfile)
+		local ok, code, headers = dw.download(url, programsfile)
 		if not ok then
 			-- error downloading file
 			return nil, code
