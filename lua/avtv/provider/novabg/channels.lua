@@ -46,7 +46,7 @@ function update(sink)
 		-- sink channel
 		log.debug(_NAME..": extracted channel "..channel.id)
 		if not sink(channel) then
-				return nil, "interrupted"
+			return nil, "interrupted"
 		end
 	end
 	return true

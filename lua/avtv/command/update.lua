@@ -8,8 +8,10 @@
 --                                                                   --
 -----------------------------------------------------------------------
 
-local config   = require "lrun.util.config"
+local table    = require "lrun.util.table"
 local log      = require "avtv.log"
+local config   = require "avtv.config"
+
 local epg = {
 	rayv     =
 	{
@@ -28,8 +30,8 @@ local epg = {
 	}
 }
 
-local _G, table, unpack, setmetatable, os =
-      _G, table, unpack, setmetatable, os
+local _G, unpack, setmetatable, os =
+      _G, unpack, setmetatable, os
 
 local print, pairs, type = print, pairs, type
 
@@ -40,8 +42,8 @@ _DESCRIPTION = "Updates EPG database with providers data"
 _HELP =
 [[
 UPDATE [provider {' ' provider}]
-  Update EPG data for the specified providers given as command arguments
-
+  Update EPG data for the specified providers given as command arguments.
+  The provider can be any of ]]..table.concat(table.keys(epg, true), ", ")..[[
 ]]
 
 local function time(n, f)
@@ -54,12 +56,17 @@ end
 
 local function updateprovider(provider)
 	log.info(_NAME..": updating "..provider)
+	local channelsexpire = config.getnumber("epg.channels.expire")
+	local programsexpire = config.getnumber("epg.programs.expire")
 	local channels = {}
 	if not epg[provider] then
 		return nil, "no such EPG provider `"..provider.."'"
 	end
 	local ok, err = time("epg."..provider..".channels.update", function ()
 		return epg[provider].channels.update(function (channel)
+			if channelsexpire > 0 then
+				channel.__expire = channelsexpire
+			end
 			table.insert(channels, channel)
 			return true
 		end)
@@ -69,12 +76,16 @@ local function updateprovider(provider)
 	end
 	-- insert channels to DB
 	_G._rdb.epg[provider].channels(unpack(channels))
+	log.info(_NAME..": "..provider.." channels inserted")
 
 	for i = 1, #channels do
 		channels[i] = channels[i].id
 	end
 	return time("epg."..provider..".programs.update", function () 
 		return epg[provider].programs.update(channels, function (channel, program) 
+			if programsexpire > 0 then
+				program.__expire = programsexpire
+			end
 			_G._rdb.epg[provider][channel](program)
 			return true
 		end)

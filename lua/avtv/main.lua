@@ -77,7 +77,7 @@ local function parseoptions(...)
 				io.stderr:write(helptext)
 
 				for i,v in ipairs(commands) do
-					io.stderr:write(v._HELP)
+					io.stderr:write(v._HELP.."\n")
 				end
 
 				os.exit(1)
