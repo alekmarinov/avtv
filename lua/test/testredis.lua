@@ -97,13 +97,13 @@ print(rcli.wilmaa.channels.tele2.category) -- error 'closed'
 channels = rcli.wilmaa.channels
 
 channels.tele1 = { name = "Tele 1", bame = "Tele 2"}
-channels.tele1.delete("?ame")
+channels.tele1.__delete("?ame")
 
 rcli.wilmaa.channels.tele1.id="tele1"
 print(rcli.wilmaa.channels.tele1.id)
-print(rcli.wilmaa.channels.tele1.delete("id"))
-print(rcli.wilmaa.channels.tele1.delete("id"))
-print(rcli.wilmaa.channels.tele1.id.exists())
+print(rcli.wilmaa.channels.tele1.__delete("id"))
+print(rcli.wilmaa.channels.tele1.__delete("id"))
+print(rcli.wilmaa.channels.tele1.id.__exists())
 --]]
 
 rcli["prop1.prop2.value"].delete()

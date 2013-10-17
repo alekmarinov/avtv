@@ -57,8 +57,9 @@ end
 local function updateprovider(provider)
 	log.info(_NAME..": updating "..provider)
 	local channelsexpire = config.getnumber("epg.channels.expire")
+	print("channelsexpire = " .. channelsexpire)
 	local programsexpire = config.getnumber("epg.programs.expire")
-	local channels = {}
+	local channelids = {__expire = channelsexpire}
 	if not epg[provider] then
 		return nil, "no such EPG provider `"..provider.."'"
 	end
@@ -67,7 +68,8 @@ local function updateprovider(provider)
 			if channelsexpire > 0 then
 				channel.__expire = channelsexpire
 			end
-			table.insert(channels, channel)
+			_G._rdb.epg[provider](channel)
+			table.insert(channelids, channel.id)
 			return true
 		end)
 	end)
@@ -75,21 +77,31 @@ local function updateprovider(provider)
 		return nil, err
 	end
 	-- insert channels to DB
-	_G._rdb.epg[provider].channels(unpack(channels))
-	log.info(_NAME..": "..provider.." channels inserted")
+	_G._rdb.epg[provider].__delete("channels")
+	_G._rdb.epg[provider].__rpush("channels", channelids)
 
-	for i = 1, #channels do
-		channels[i] = channels[i].id
-	end
-	return time("epg."..provider..".programs.update", function () 
-		return epg[provider].programs.update(channels, function (channel, program) 
+	log.info(_NAME..": "..table.getn(channelids).." channels inserted in "..provider.." provider")
+
+	local programids = {}
+	ok, err = time("epg."..provider..".programs.update", function () 
+		return epg[provider].programs.update(channelids, function (channelid, program) 
 			if programsexpire > 0 then
 				program.__expire = programsexpire
 			end
-			_G._rdb.epg[provider][channel](program)
+			_G._rdb.epg[provider][channelid](program)
+			programids[channelid] = programids[channelid] or {__expire = programsexpire}
+			table.insert(programids[channelid], program.id)
 			return true
 		end)
 	end)
+	if not ok then
+		return nil, err
+	end
+	for channelid, programsid in pairs(programids) do
+		_G._rdb.epg[provider][channelid].__delete("programs")
+		_G._rdb.epg[provider][channelid].__rpush("programs", programids[channelid])
+	end
+	return true
 end
 
 return setmetatable(_M, { __call = function (this, ...)
