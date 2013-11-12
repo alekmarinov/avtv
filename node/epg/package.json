@@ -1,0 +1,22 @@
+{
+  "name": "avtv",
+  "version": "1.0.0",
+  "author": "AVIQ Bulgaria Ltd",
+  "description": "AVTV is a Web based infrastructure providing complete EPG service - customer management, feeding console and data access API",
+  "contributors": [ 
+    {
+      "name": "Alexander Marinov",
+      "email": "alek.marinov@aviq.bg"
+    } 
+  ],  
+  "main": "./api.js",
+  "dependencies": {
+    "redis": ">= 0.8.6",
+    "restify": ">= 2.6.0"
+  },
+  "noAnalyze": true,
+  "license": "Copyright (c) AVIQ Bulgaria Ltd.",
+  "engines": {
+    "node": ">= 0.10.x"
+  }
+}

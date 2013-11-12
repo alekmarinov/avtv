@@ -26,9 +26,9 @@ function onError(err, res, next)
 function rawQuery(res, next, rclient, keyArr)
 {
 	var PATTERNS_ALLOW =
-	[
-		"^[^\\.]+\\." // something . something
-	]
+		[
+			"^[^\\.]+\\." // something . something
+		]
 
 	// extract query key
 	var keys = 'epg.' + keyArr.join('.')
@@ -48,19 +48,25 @@ function rawQuery(res, next, rclient, keyArr)
 	// request all keys in epg namespace
 	return rclient.keys(keys + '*', function onKeys(err, resKeys)
 	{
-		if (err) return onError(err, res, next)
-		if (resKeys.length == 0)
+		if (err)
 		{
-			res.send(404)
-			next()
-			return ;
+			return onError(err, res, next);
+		}
+		if (resKeys.length === 0)
+		{
+			res.send(404);
+			next();
+			return;
 		}
 		// request all key values
 		rclient.mget(resKeys, function onMGet(err, resValues)
 		{
-			if (err) return onError(err, res, next)
-			var json
-			if (resKeys.length == 1 && resKeys[0].length == keys.length)
+			if (err)
+			{
+				return onError(err, res, next)
+			}
+			var json;
+			if (resKeys.length === 1 && resKeys[0].length === keys.length)
 			{
 				json = resValues[0]
 			}
@@ -90,14 +96,17 @@ function channelsQuery(res, next, rclient, params)
 	}
 	// extract provider
 	var provider = params[0]
-	var prefix = 'epg.' + provider + '.'
+	var prefix = 'epg.' + provider + '.';
 	switch (params.length)
 	{
 		case 1:
 			// use redis sort to extract additional objects info
 			return rclient.sort(prefix + 'channels', 'by', 'nosort', 'get', '#', 'get', prefix + '*.title', 'get', prefix + '*.thumbnail', function onSortChannels(err, channelrows)
 			{
-				if (err) return onError(err, res, next)
+				if (err)
+				{
+					return onError(err, res, next)
+				}
 				if (channelrows.length > 0)
 				{
 					var json = []
@@ -112,16 +121,18 @@ function channelsQuery(res, next, rclient, params)
 					res.send(404)
 				}
 				next()
-			});
-		break;
+			})
 		case 2:
 			var channelId = params[1]
 			// request channel info
 			prefix = prefix + channelId + '.'
 			return rclient.mget(prefix + 'id', prefix + 'title', prefix + 'thumbnail', function onMGet(err, resValues)
 			{
-				if (err) return onError(err, res, next)
-				if (resValues[0] != null)
+				if (err)
+				{
+					return onError(err, res, next)
+				}
+				if (resValues[0] !== null)
 				{
 					var json = {
 						id: resValues[0],
@@ -136,10 +147,8 @@ function channelsQuery(res, next, rclient, params)
 				}
 				next()
 			})
-		break;
 		default:
-			return rawQuery(res, next, rclient, params);
-		break;
+			return rawQuery(res, next, rclient, params)
 	}
 }
 
@@ -149,10 +158,10 @@ function programsQuery(res, next, rclient, params)
 	{
 		res.send(403)
 		next()
-		return false;
+		return false
 	}
 
-	if (params.length == 2)
+	if (params.length === 2)
 	{
 		// extract provider and channelId
 		var provider = params[0]
@@ -162,7 +171,10 @@ function programsQuery(res, next, rclient, params)
 		// use redis sort to extract additional objects info
 		return rclient.sort(prefix + 'programs', 'get', '#', 'get', prefix + '*.stop', 'get', prefix + '*.title', function onSortPrograms(err, programsrows)
 		{
-			if (err) return onError(err, res, next)
+			if (err)
+			{
+				return onError(err, res, next)
+			}
 			if (programsrows.length > 0)
 			{
 				var json = []
@@ -176,11 +188,11 @@ function programsQuery(res, next, rclient, params)
 			{
 				res.send(404)
 			}
-		});
+		})
 	}
 	else
 	{
-		return rawQuery(res, next, rclient, params);
+		return rawQuery(res, next, rclient, params)
 	}
 }
 
@@ -191,19 +203,21 @@ function apiV1(rclient)
 		var params = req.params[0]
 
 		// strip last / if any
-		if (params.charAt(params.length-1) == '/')
-			params = params.substring(0, params.length-1)
+		if (params.charAt(params.length - 1) === '/')
+		{
+			params = params.substring(0, params.length - 1)
+		}
 
 		// strip to array
-		var params = params.split('/')
+		params = params.split('/')
 
 		// strip empty params
 		for (var i = 0; i < params.length; i++)
 		{
-			if (params[i].length == 0)
+			if (params[i].length === 0)
 			{
 				params.splice(i, 1)
-				i--;
+				i--
 			}
 		}
 
@@ -215,14 +229,14 @@ function apiV1(rclient)
 		{
 			case CMD_CHANNELS:
 				return channelsQuery(res, next, rclient, params)
-			break;
+				break
 			case CMD_PROGRAMS:
 				return programsQuery(res, next, rclient, params)
-			break;
+				break
 			default:
 				res.send(404)
-				next();
-			break;
+				next()
+				break
 		}
 		return false
 	}
