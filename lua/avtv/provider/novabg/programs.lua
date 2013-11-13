@@ -70,7 +70,7 @@ channelupdater.novatv = function (channel, sink)
 			local h3 = tagh3[i]
 
 			-- set program title
-			program.title = h3.a[1]
+			program.title = tostring(h3.a[1])
 			local time = tostring(h3.span[1])
 			local hour, min = unpack(string.explode(time, ":"))
 			hour = tonumber(hour)
