@@ -41,6 +41,7 @@ channelupdater.novatv = function (channel, sink)
 	local dayfrom = -config.getnumber("epg.novabg.dayspast")
 	local dayto = config.getnumber("epg.novabg.daysfuture")
 
+	local lastprogram
 	for day = dayfrom, dayto do
 		local date = ymdofs(day)
 		local url = string.format(config.getstring("epg.novabg.novatv.url.schedule"), unpack(date))
@@ -188,9 +189,13 @@ channelupdater.novatv = function (channel, sink)
 
 			-- sink program
 			log.debug(_NAME..": extracted program "..channel.."/"..program.id)
-			if not sink(channel, program) then
-				return nil, "interrupted"
+			if lastprogram then
+				lastprogram.stop = program.id
+				if not sink(channel, lastprogram) then
+					return nil, "interrupted"
+				end
 			end
+			lastprogram = program
 		end
 	end
 	return true
