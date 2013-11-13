@@ -109,10 +109,10 @@ function channelsQuery(res, next, rclient, params)
 				}
 				if (channelrows.length > 0)
 				{
-					var json = []
+					var json = [["id", "title", "thumbnail"]]
 					for (var i = 0; i < channelrows.length / 3; i++)
 					{
-						json.push({id: channelrows[i * 3], title: channelrows[i * 3 + 1], thumbnail: channelrows[i * 3 + 2]})
+						json.push([channelrows[i * 3], channelrows[i * 3 + 1], channelrows[i * 3 + 2]])
 					}
 					res.send(json)
 				}
@@ -177,10 +177,10 @@ function programsQuery(res, next, rclient, params)
 			}
 			if (programsrows.length > 0)
 			{
-				var json = []
+				var json = [["id", "stop", "title"]]
 				for (var i = 0; i < programsrows.length / 3; i++)
 				{
-					json.push({id: programsrows[i * 3], stop: programsrows[i * 3 + 1], title: programsrows[i * 3 + 2]})
+					json.push([programsrows[i * 3], programsrows[i * 3 + 1], programsrows[i * 3 + 2]])
 				}
 				res.send(json)
 			}
