@@ -16,8 +16,8 @@ local string = require "lrun.util.string"
 local config = require "avtv.config"
 local log    = require "avtv.log"
 
-local io, os, type, assert, ipairs, table, tonumber =
-      io, os, type, assert, ipairs, table, tonumber
+local io, os, type, assert, ipairs, table, tonumber, require =
+      io, os, type, assert, ipairs, table, tonumber, require
 local print, pairs = print, pairs
 
 module "avtv.provider.wilmaa.programs"
@@ -40,6 +40,10 @@ function update(channels, sink)
 	local daysfuture = config.getnumber("epg.rayv.daysfuture")
 	local urltempl = config.getstring("epg.wilmaa.url.programs")
 	local dwopts = {proxy=config.get("epg.wilmaa.proxy")}
+	local dwmethod = config.get("epg.wilmaa.download.method")
+	if dwmethod ~= "luasocket" then
+		dw = require("lrun.net.www.download."..dwmethod)
+	end
 	for day = -dayspast, daysfuture do
 		local ok, zfile, xmlfile, xml, err
 		local timestamp = os.time() + day * DAYSECS

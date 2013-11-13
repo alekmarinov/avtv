@@ -15,8 +15,8 @@ local string = require "lrun.util.string"
 local config = require "avtv.config"
 local log    = require "avtv.log"
 
-local io, os, type, assert, ipairs, table =
-      io, os, type, assert, ipairs, table
+local io, os, type, assert, ipairs, table, require =
+      io, os, type, assert, ipairs, table, require
 local print, pairs = print, pairs
 
 module "avtv.provider.wilmaa.channels"
@@ -32,6 +32,12 @@ function update(sink)
 	if not lfs.exists(channelsfile) then
 		local url = config.getstring("epg.wilmaa.url.channels")
 		log.debug(_NAME..": downloading `"..url.."' to `"..channelsfile.."'")
+
+		local dwmethod = config.get("epg.wilmaa.download.method")
+		if dwmethod ~= "luasocket" then
+			dw = require("lrun.net.www.download."..dwmethod)
+		end
+
 		local ok, code, headers = dw.download(url, channelsfile, {proxy=config.get("epg.wilmaa.proxy")})
 		if not ok then
 			lfs.delete(channelsfile)
