@@ -15,8 +15,8 @@ local string = require "lrun.util.string"
 local config = require "avtv.config"
 local log    = require "avtv.log"
 
-local io, os, type, assert, ipairs, table, tonumber, tostring, unpack =
-      io, os, type, assert, ipairs, table, tonumber, tostring, unpack
+local io, os, type, assert, ipairs, table, tonumber, tostring, unpack, pcall =
+      io, os, type, assert, ipairs, table, tonumber, tostring, unpack, pcall
 local print, pairs = print, pairs
 
 module "avtv.provider.novabg.programs"
@@ -126,58 +126,64 @@ channelupdater.novatv = function (channel, sink)
 					htmltext = file:read("*a")
 					file:close()
 				end
-				hom = html.parse(htmltext)
-				
-				local divparent = hom{tag="div", class="inside"}[1]
-				local flash = divparent{tag="object", id="flashHeader"}
-				local videourl, imageurl
-				if #flash > 0 then
-					-- flash video found
-					local flashparam = flash[1]{tag = "param", name = "flashvars"}[1]("value")
-					
-					local params = string.explode(flashparam, "&")
-					videourl = string.explode(params[1], "=")[2]
-					imageurl = string.explode(params[2], "=")[2]
-				else
-					local divhead = divparent{tag="div", class="news_head"}[1].div[1]
-					style = divhead("style")
-					if style then
-						string.gsub(style, "url%((.-)%)", function (url) imageurl = url end)
-					end
-				end
-				if videourl then
-					-- set program video
-					program.video = lfs.basename(videourl)
-					local videofile = lfs.concatfilenames(dirdata, program.video)
-					if not lfs.exists(videofile) then
-						ok, code = dw.download(videourl, videofile)
-						if not ok then
-							log.warn(_NAME..": Error downloading video `"..videourl.."'. HTTP status "..code)
-							program.video = nil
-						end
-					end
-				end
-				if imageurl then
-					-- set program image
-					program.image = lfs.basename(imageurl)
-					local imagefile = lfs.concatfilenames(dirdata, program.image)
-					if not lfs.exists(imagefile) then
-						ok, code = dw.download(imageurl, imagefile)
-						if not ok then
-							log.warn(_NAME..": Error downloading image `"..imageurl.."'. HTTP status "..code)
-							program.image = nil
-						end
-					end
-				end
 
-				local divdetails = divparent{tag="div", class="n-text"}[1]
-				local paras = divdetails.p
-				local description = {}
-				for i, v in ipairs(paras) do
-					table.insert(description, tostring(v))
+				ok, err = pcall(function()
+					hom = html.parse(htmltext)
+					local divparent = hom{tag="div", class="inside"}[1]
+					local flash = divparent{tag="object", id="flashHeader"}
+					local videourl, imageurl
+					if #flash > 0 then
+						-- flash video found
+						local flashparam = flash[1]{tag = "param", name = "flashvars"}[1]("value")
+						
+						local params = string.explode(flashparam, "&")
+						videourl = string.explode(params[1], "=")[2]
+						imageurl = string.explode(params[2], "=")[2]
+					else
+						local divhead = divparent{tag="div", class="news_head"}[1].div[1]
+						style = divhead("style")
+						if style then
+							string.gsub(style, "url%((.-)%)", function (url) imageurl = url end)
+						end
+					end
+					if videourl then
+						-- set program video
+						program.video = lfs.basename(videourl)
+						local videofile = lfs.concatfilenames(dirdata, program.video)
+						if not lfs.exists(videofile) then
+							ok, code = dw.download(videourl, videofile)
+							if not ok then
+								log.warn(_NAME..": Error downloading video `"..videourl.."'. HTTP status "..code)
+								program.video = nil
+							end
+						end
+					end
+					if imageurl then
+						-- set program image
+						program.image = lfs.basename(imageurl)
+						local imagefile = lfs.concatfilenames(dirdata, program.image)
+						if not lfs.exists(imagefile) then
+							ok, code = dw.download(imageurl, imagefile)
+							if not ok then
+								log.warn(_NAME..": Error downloading image `"..imageurl.."'. HTTP status "..code)
+								program.image = nil
+							end
+						end
+					end
+
+					local divdetails = divparent{tag="div", class="n-text"}[1]
+					local paras = divdetails.p
+					local description = {}
+					for i, v in ipairs(paras) do
+						table.insert(description, tostring(v))
+					end
+					-- set program description
+					program.description = table.concat(description, "\n")
+				end)
+				if not ok then -- if error reading program details
+					-- report warning
+					log.warn(_NAME..": error parsing details for "..channel.."/"..program.id..": "..err)
 				end
-				-- set program description
-				program.description = table.concat(description, "\n")
 			end
 
 			-- sink program
