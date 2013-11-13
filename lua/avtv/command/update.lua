@@ -57,7 +57,6 @@ end
 local function updateprovider(provider)
 	log.info(_NAME..": updating "..provider)
 	local channelsexpire = config.getnumber("epg.channels.expire")
-	print("channelsexpire = " .. channelsexpire)
 	local programsexpire = config.getnumber("epg.programs.expire")
 	local channelids = {__expire = channelsexpire}
 	if not epg[provider] then

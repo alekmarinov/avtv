@@ -84,7 +84,6 @@ function update(sink)
 			for j, k in ipairs(v) do
 				if k.tag and string.lower(k.tag) == "channel" then
 					local channel = {}
-					print("channel "..k.attr.id)
 					for l, m in ipairs(k) do
 						local tag = m.tag and string.lower(m.tag)
 						if tag == "label" then
