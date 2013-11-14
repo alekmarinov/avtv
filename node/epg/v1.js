@@ -109,10 +109,10 @@ function channelsQuery(res, next, rclient, params)
 				}
 				if (channelrows.length > 0)
 				{
-					var json = [["id", "title", "thumbnail"]]
+					var json = {meta: ["id", "title", "thumbnail"], data: []}
 					for (var i = 0; i < channelrows.length / 3; i++)
 					{
-						json.push([channelrows[i * 3], channelrows[i * 3 + 1], channelrows[i * 3 + 2]])
+						json.data.push([channelrows[i * 3], channelrows[i * 3 + 1], channelrows[i * 3 + 2]])
 					}
 					res.send(json)
 				}
@@ -177,10 +177,10 @@ function programsQuery(res, next, rclient, params)
 			}
 			if (programsrows.length > 0)
 			{
-				var json = [["id", "stop", "title"]]
+				var json = {meta: ["id", "stop", "title"], data: []}
 				for (var i = 0; i < programsrows.length / 3; i++)
 				{
-					json.push([programsrows[i * 3], programsrows[i * 3 + 1], programsrows[i * 3 + 2]])
+					json.data.push([programsrows[i * 3], programsrows[i * 3 + 1], programsrows[i * 3 + 2]])
 				}
 				res.send(json)
 			}
