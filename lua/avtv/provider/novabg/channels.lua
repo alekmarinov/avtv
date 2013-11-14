@@ -22,9 +22,9 @@ module "avtv.provider.novabg.channels"
 -- updates NovaBG channels and call sink callback for each new channel
 function update(sink)
 	assert(type(sink) == "function", "sink function argument expected")
-
 	local dirdata = lfs.concatfilenames(config.getstring("dir.data"), "novabg", os.date("%Y%m%d"))
-	lfs.mkdir(dirdata)
+	local dirstatic = config.getstring("epg.novabg.dir.static")
+
 	local channels = string.explode(config.getstring("epg.novabg.channels"), ",")
 	for _, id in ipairs(channels) do
 		local logourl = config.getstring("epg.novabg."..id..".logourl")
@@ -36,7 +36,8 @@ function update(sink)
 			thumbnail = thumbname
 		}
 
-		local thumbfile = lfs.concatfilenames(dirdata, thumbname)
+		local thumbfile = lfs.concatfilenames(dirstatic, id, "logo"..lfs.ext(logourl))
+		lfs.mkdir(lfs.dirname(thumbfile))
 		if not lfs.exists(thumbfile) then
 			local ok, code = dw.download(logourl, thumbfile)
 			if not ok then

@@ -25,7 +25,9 @@ module "avtv.provider.wilmaa.channels"
 function update(sink)
 	assert(type(sink) == "function", "sink function argument expected")
 	local dirdata = lfs.concatfilenames(config.getstring("dir.data"), "wilmaa", os.date("%Y%m%d"))
+	local dirstatic = config.getstring("epg.wilmaa.dir.static")
 	lfs.mkdir(dirdata)
+	lfs.mkdir(dirstatic)
 	local channelsfile = lfs.concatfilenames(dirdata, "channels-wilmaa-"..os.date("%Y%m%d")..".xml")
 
 	local ok, file, xml, err
@@ -79,8 +81,32 @@ function update(sink)
 	if not dom then
 		return nil, err
 	end
+	local thumburl, thumbsize
 	for i, v in ipairs(dom) do
-		if v.tag and string.lower(v.tag) == "channels" then
+		if v.tag and string.lower(v.tag) == "logos" then
+			for j, k in ipairs(v) do
+				if k.tag and string.lower(k.tag) == "baseUrl" then
+					thumburl = k[1]
+				elseif k.tag and string.lower(k.tag) == "sizes" then
+					local size = 0
+					for l, m in ipairs(k) do
+						if m.tag and string.lower(m.tag) == "size" then
+							local wxh = tonumber(m.attr.width) * tonumber(m.attr.height)
+							if wxh > size then
+								thumbsize = m[1]
+								size = wxh
+							end
+						end
+					end
+				end
+			end
+			if thumbsize then
+				thumburl = string.gsub(thumburl, "{SIZE}", thumbsize)
+			else
+				log.warn(_NAME..": Unable to find logo/size tag. Channel urls will not be downloaded")
+				thumburl = nil
+			end
+		elseif v.tag and string.lower(v.tag) == "channels" then
 			for j, k in ipairs(v) do
 				if k.tag and string.lower(k.tag) == "channel" then
 					local channel = {}
@@ -110,6 +136,20 @@ function update(sink)
 									end									
 								end
 							end
+						end
+					end
+					-- update channel thumbnail image
+					if thumburl then
+						local thumbname = "logo"..lfs.ext(thumburl)
+						local thumbfile = lfs.concatfilenames(dirstatic, channel.id, thumbname)
+						lfs.mkdir(lfs.dirname(thumbfile))
+						local thumbnailurl = string.gsub(thumburl, "{CHANNEL_ID}", channel.id)
+						log.debug(_NAME..": downloading `"..thumbnailurl.."' to `"..thumbfile.."'")
+						ok, err = dw.download(thumbnailurl, thumbfile)
+						if not ok then
+							log.warn(_NAME..": "..err)
+						else
+							channel.thumbnail = thumbname
 						end
 					end
 					-- sink channel

@@ -34,7 +34,9 @@ local IMAGE_SIZE = "253_190"
 function update(channels, sink)
 	assert(type(sink) == "function", "sink function argument expected")
 	local dirdata = lfs.concatfilenames(config.getstring("dir.data"), "wilmaa", os.date("%Y%m%d"))
+	local dirstatic = config.getstring("epg.wilmaa.dir.static")
 	lfs.mkdir(dirdata)
+	lfs.mkdir(dirstatic)
 
 	local dayspast = config.getnumber("epg.wilmaa.dayspast")
 	local daysfuture = config.getnumber("epg.rayv.daysfuture")
@@ -123,9 +125,10 @@ function update(channels, sink)
 
 						local channel = programvalues.channel_id
 						local imageurl = string.gsub(imageurltempl, "%[ID%]", programvalues.image)
-						local imagefile = lfs.concatfilenames(dirdata, programvalues.image..".jpg")
+						local imagefile = lfs.concatfilenames(dirstatic, channel, programvalues.image..".jpg")
 						if not lfs.exists(imagefile) then
 							-- download program image
+							lfs.mkdir(lfs.dirname(imagefile))
 							log.debug(_NAME..": downloading `"..imageurl.."' to `"..imagefile.."'")
 							ok, code = dw.download(imageurl, imagefile, dwopts)
 							if not ok then

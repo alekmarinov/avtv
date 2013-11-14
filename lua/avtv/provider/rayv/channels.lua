@@ -29,7 +29,9 @@ function update(sink)
 	assert(type(sink) == "function", "sink function argument expected")
 	local distributor = config.getstring("epg.rayv.distributor")
 	local dirdata = lfs.concatfilenames(config.getstring("dir.data"), "rayv", os.date("%Y%m%d"))
+	local dirstatic = config.getstring("epg.rayv.dir.static")
 	lfs.mkdir(dirdata)
+	lfs.mkdir(dirstatic)
 	local channelsfile = lfs.concatfilenames(dirdata, "channels-rayv-"..distributor.."-"..os.date("%Y%m%d")..".xml")
 
 	local ok, file, xml, err
@@ -98,8 +100,10 @@ function update(sink)
 			if not thumbext then
 				log.warn(_NAME..": channel "..channel.id.." have invalid thumbnail image")
 			else
-				local thumbname = channel.id.."_"..thumbnailwidth.."x"..thumbnailheight..thumbext
-				local thumbfile = lfs.concatfilenames(dirdata, thumbname)
+				local thumbname = "logo"..thumbext
+				print(dirstatic, channel.id, thumbname)
+				local thumbfile = lfs.concatfilenames(dirstatic, channel.id, thumbname)
+				lfs.mkdir(lfs.dirname(thumbfile))
 				log.debug(_NAME..": downloading `"..thumbnailurl.."' to `"..thumbfile.."'")
 				ok, err = dw.download(thumbnailurl, thumbfile)
 				if not ok then

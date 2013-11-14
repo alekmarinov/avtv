@@ -36,7 +36,9 @@ local channelupdater = {}
 -- updates NovaTV channel
 channelupdater.novatv = function (channel, sink)
 	local dirdata = lfs.concatfilenames(config.getstring("dir.data"), "novabg", os.date("%Y%m%d"))
+	local dirstatic = config.getstring("epg.novabg.dir.static")
 	lfs.mkdir(dirdata)
+	lfs.mkdir(dirstatic)
 
 	local dayfrom = -config.getnumber("epg.novabg.dayspast")
 	local dayto = config.getnumber("epg.novabg.daysfuture")
@@ -96,14 +98,16 @@ channelupdater.novatv = function (channel, sink)
 					string.gsub(style, "url%((.-)%)", function (url)
 						-- extract program thumbnail
 						local thumbfile = lfs.basename(url)
-						thumbfile = lfs.concatfilenames(dirdata, thumbfile)
 						-- set program thumbnail image
 						program.thumbnail = thumbfile
+						-- download thumbnail file
+						thumbfile = lfs.concatfilenames(dirstatic, channel, thumbfile)
+						lfs.mkdir(lfs.dirname(thumbfile))
 						if not lfs.exists(thumbfile) then
 							log.debug(_NAME..": downloading `"..url.."' to `"..thumbfile.."'")
 							ok, code = dw.download(url, thumbfile)
 							if not ok then
-								log.warn(_NAME..": Error downloading thumbnail `"..url.."'. HTTP status "..code)
+								log.warn(_NAME..": Error downloading thumbnail `"..url.."'. "..code)
 								program.thumbnail = nil
 							end
 						end
@@ -118,7 +122,7 @@ channelupdater.novatv = function (channel, sink)
 				if not lfs.exists(detailsfile) then
 					ok, code = dw.download(detailsurl, detailsfile)
 					if not ok then
-						log.warn(_NAME..": Error downloading details `"..detailsurl.."'. HTTP status "..code)
+						log.warn(_NAME..": Error downloading details `"..detailsurl.."'. "..code)
 						detailsfile = nil
 					end
 				end
@@ -150,11 +154,12 @@ channelupdater.novatv = function (channel, sink)
 					if videourl then
 						-- set program video
 						program.video = lfs.basename(videourl)
-						local videofile = lfs.concatfilenames(dirdata, program.video)
+						local videofile = lfs.concatfilenames(dirstatic, channel, program.video)
+						lfs.mkdir(lfs.dirname(videofile))
 						if not lfs.exists(videofile) then
 							ok, code = dw.download(videourl, videofile)
 							if not ok then
-								log.warn(_NAME..": Error downloading video `"..videourl.."'. HTTP status "..code)
+								log.warn(_NAME..": Error downloading video `"..videourl.."'. "..code)
 								program.video = nil
 							end
 						end
@@ -162,11 +167,12 @@ channelupdater.novatv = function (channel, sink)
 					if imageurl then
 						-- set program image
 						program.image = lfs.basename(imageurl)
-						local imagefile = lfs.concatfilenames(dirdata, program.image)
+						local imagefile = lfs.concatfilenames(dirstatic, channel, program.image)
+						lfs.mkdir(lfs.dirname(imagefile))
 						if not lfs.exists(imagefile) then
 							ok, code = dw.download(imageurl, imagefile)
 							if not ok then
-								log.warn(_NAME..": Error downloading image `"..imageurl.."'. HTTP status "..code)
+								log.warn(_NAME..": Error downloading image `"..imageurl.."'. "..code)
 								program.image = nil
 							end
 						end
