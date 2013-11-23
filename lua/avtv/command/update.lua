@@ -22,12 +22,15 @@ local epg = {
 	{
 		channels = require "avtv.provider.wilmaa.channels",
 		programs = require "avtv.provider.wilmaa.programs",
-	},
+	}
+--[[
+	,
 	novabg =
 	{
 		channels = require "avtv.provider.novabg.channels",
 		programs = require "avtv.provider.novabg.programs",
 	}
+]]
 }
 
 local _G, unpack, setmetatable, os =
