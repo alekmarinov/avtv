@@ -14,6 +14,7 @@ local lfs    = require "lrun.util.lfs"
 local string = require "lrun.util.string"
 local config = require "avtv.config"
 local log    = require "avtv.log"
+local gzip   = require "luagzip"
 
 local io, os, type, assert, ipairs, table, tonumber, tostring, unpack, pcall =
       io, os, type, assert, ipairs, table, tonumber, tostring, unpack, pcall
@@ -33,6 +34,11 @@ end
 
 local channelupdater = {}
 
+-- FIXME: pattern for searching video url of program zdraveiblgariya
+local videos = {
+	zdraveiblgariya = "http://str.by.host.bg/novatv/na_svetlo/na_svetlo-%s-%s-%s.flv"
+}
+
 -- updates NovaTV channel
 channelupdater.novatv = function (channel, sink)
 	local dirdata = lfs.concatfilenames(config.getstring("dir.data"), "novabg", os.date("%Y%m%d"))
@@ -49,33 +55,36 @@ channelupdater.novatv = function (channel, sink)
 		local url = string.format(config.getstring("epg.novabg.novatv.url.schedule"), unpack(date))
 		local programsfile = lfs.concatfilenames(dirdata, "programs-"..dayofs(day, "%Y%m%d")..".html")
 
-		local htmltext
+		local ok, err, code, file, htmltext
 		if not lfs.exists(programsfile) then
 			log.debug(_NAME..": downloading `"..url.."' to `"..programsfile.."'")
-			local ok, code = dw.download(url)
+			ok, code = dw.download(url, programsfile)
 			if not ok then
 				-- error downloading file
 				return nil, code
 			end
-			htmltext = ok
-		else
-			local file, err = io.open(programsfile)
-			htmltext = file:read("*a")
-			file:close()
 		end
+		file, err = io.open(programsfile)
+		htmltext = file:read("*a")
+		file:close()
 		local hom = html.parse(htmltext)
-		local taglist = hom{ tag = "div", id = "accordion" }
-		local tagh3 = taglist[1].h3
-		local tagdiv = taglist[1]{tag="div", class="current_show"}
+		local taglist = hom{ tag = "li", class = "programme" }
+
 		local prevhour
-		for i, div in ipairs(tagdiv) do
+		for _, tagprogramme in ipairs(taglist) do
 			local program = {}
-			local h3 = tagh3[i]
+
+			local tagtime = tagprogramme{ tag = "div", class = "programme_time" }
+			local tagtitle = tagprogramme{ tag = "a", class = "programme_title" }
+			local taginfo = tagprogramme{ tag = "span", class = "programme_info_box" }
 
 			-- set program title
-			program.title = tostring(h3.a[1])
-			local time = tostring(h3.span[1])
+			program.title = tostring(tagtitle[1])
+
+			-- parse program time and compute program date
+			local time = tostring(tagtime[1])
 			local hour, min = unpack(string.explode(time, ":"))
+
 			hour = tonumber(hour)
 			min = tonumber(min)
 			local pday = day
@@ -87,39 +96,19 @@ channelupdater.novatv = function (channel, sink)
 			-- set program id
 			program.id = os.time{year=date[1], month=date[2], day=date[3], hour=hour, min=min}
 
-			local spans = div.span
 			-- set program summary (short description)
-			program.summary = string.trim(tostring(div.span[#spans])) -- take last span as short description
-			local el = div.div
-			local style
-			if #el > 0 then
-				style = el[1]("style")
-				if style then
-					string.gsub(style, "url%((.-)%)", function (url)
-						-- extract program thumbnail
-						local thumbfile = lfs.basename(url)
-						-- set program thumbnail image
-						program.thumbnail = thumbfile
-						-- download thumbnail file
-						thumbfile = lfs.concatfilenames(dirstatic, channel, thumbfile)
-						lfs.mkdir(lfs.dirname(thumbfile))
-						if not lfs.exists(thumbfile) then
-							log.debug(_NAME..": downloading `"..url.."' to `"..thumbfile.."'")
-							ok, code = dw.download(url, thumbfile)
-							if not ok then
-								log.warn(_NAME..": Error downloading thumbnail `"..url.."'. "..code)
-								program.thumbnail = nil
-							end
-						end
-					end)
-				end
-			end
+			program.summary = taginfo[1] and tostring(taginfo[1])
 
-			if #div.a > 0 then
-				local detailsurl = config.getstring("epg.novabg.novatv.url.main").."/"..div.a[1]("href")
-				local detailsfile = lfs.concatfilenames(dirdata, lfs.basename(detailsurl:sub(1, detailsurl:len()-1))..".html")
-				log.debug(_NAME..": downloading `"..detailsurl.."' to `"..detailsfile.."'")
+			-- extract program details
+			local detailsurl = tagtitle[1]("href")
+			if string.starts(detailsurl, "/") then
+				detailsurl = config.getstring("epg.novabg.novatv.url.main")..detailsurl
+				if string.ends(detailsurl, "/") then
+					detailsurl = detailsurl:sub(1, -2)
+				end
+				local detailsfile = lfs.concatfilenames(dirdata, lfs.basename(detailsurl)..".html")
 				if not lfs.exists(detailsfile) then
+					log.debug(_NAME..": downloading `"..detailsurl.."' to `"..detailsfile.."'")
 					ok, code = dw.download(detailsurl, detailsfile)
 					if not ok then
 						log.warn(_NAME..": Error downloading details `"..detailsurl.."'. "..code)
@@ -127,69 +116,51 @@ channelupdater.novatv = function (channel, sink)
 					end
 				end
 				if detailsfile then
-					local file = io.open(detailsfile)
+					file, err = io.open(detailsfile)
 					htmltext = file:read("*a")
 					file:close()
-				end
-
-				ok, err = pcall(function()
 					hom = html.parse(htmltext)
-					local divparent = hom{tag="div", class="inside"}[1]
-					local flash = divparent{tag="object", id="flashHeader"}
-					local videourl, imageurl
-					if #flash > 0 then
-						-- flash video found
-						local flashparam = flash[1]{tag = "param", name = "flashvars"}[1]("value")
-						
-						local params = string.explode(flashparam, "&")
-						videourl = string.explode(params[1], "=")[2]
-						imageurl = string.explode(params[2], "=")[2]
+					local tagdescr = hom{ tag = "div", class="show_description" }
+					tagdescr = tagdescr[1]
+					if not tagdescr then
+						log.warn(_NAME..": Invalid details page `"..detailsurl.."'")
 					else
-						local divhead = divparent{tag="div", class="news_head"}[1].div[1]
-						style = divhead("style")
-						if style then
-							string.gsub(style, "url%((.-)%)", function (url) imageurl = url end)
-						end
-					end
-					if videourl then
-						-- set program video
-						program.video = lfs.basename(videourl)
-						local videofile = lfs.concatfilenames(dirstatic, channel, program.video)
-						lfs.mkdir(lfs.dirname(videofile))
-						if not lfs.exists(videofile) then
-							ok, code = dw.download(videourl, videofile)
-							if not ok then
-								log.warn(_NAME..": Error downloading video `"..videourl.."'. "..code)
-								program.video = nil
+						-- extract program description
+						local ptags = tagdescr{ tag = "p" }
+						local descrarr = {}
+						for _, ptag in ipairs(ptags) do
+							if ptag("class") == nil then
+								table.insert(descrarr, tostring(ptag))
 							end
 						end
-					end
-					if imageurl then
-						-- set program image
-						program.image = lfs.basename(imageurl)
-						local imagefile = lfs.concatfilenames(dirstatic, channel, program.image)
-						lfs.mkdir(lfs.dirname(imagefile))
-						if not lfs.exists(imagefile) then
-							ok, code = dw.download(imageurl, imagefile)
-							if not ok then
-								log.warn(_NAME..": Error downloading image `"..imageurl.."'. "..code)
-								program.image = nil
-							end
-						end
-					end
+						program.description = table.concat(descrarr, "\n")
 
-					local divdetails = divparent{tag="div", class="n-text"}[1]
-					local paras = divdetails.p
-					local description = {}
-					for i, v in ipairs(paras) do
-						table.insert(description, tostring(v))
+						-- extract program thumbnail
+						local imgsrc = tagdescr.img[1]("src")
+						if string.starts(imgsrc, "http://") then
+							local thumbfile = lfs.basename(imgsrc)
+							-- set program thumbnail image
+							program.thumbnail = thumbfile
+							-- download thumbnail file
+							thumbfile = lfs.concatfilenames(dirstatic, channel, thumbfile)
+							lfs.mkdir(lfs.dirname(thumbfile))
+							if not lfs.exists(thumbfile) then
+								log.debug(_NAME..": downloading `"..imgsrc.."' to `"..thumbfile.."'")
+								ok, code = dw.download(imgsrc, thumbfile)
+								if not ok then
+									log.warn(_NAME..": Error downloading thumbnail `"..imgsrc.."'. "..code)
+									program.thumbnail = nil
+								end
+							end
+						end
+
+						-- extract program video
+						local vidurl = hom{ tag="a", class="h2_novaplay" }
+						vidurl = vidurl and vidurl[1]
+						if vidurl and string.starts(tostring(vidurl), "http://") then
+							program.video = lfs.basename(vidurl)
+						end
 					end
-					-- set program description
-					program.description = table.concat(description, "\n")
-				end)
-				if not ok then -- if error reading program details
-					-- report warning
-					log.warn(_NAME..": error parsing details for "..channel.."/"..program.id..": "..err)
 				end
 			end
 
@@ -202,6 +173,34 @@ channelupdater.novatv = function (channel, sink)
 				end
 			end
 			lastprogram = program
+		end
+	end
+	-- extract program video
+	if config.getnumber("epg.novabg.novatv.video.enable") == 1 then
+		local vidnames = string.explode(config.getstring("epg.novabg.novatv.video.names"), ",")
+		log.debug(_NAME..": start downloading "..table.getn(vidnames).." videos")
+		local vidfilepattern = config.getstring("epg.novabg.novatv.video.pattern")
+		local vidurlpattern = config.getstring("epg.novabg.novatv.video.url")
+		for _, vidname in ipairs(vidnames) do
+			local programname, programfile, programfile2 = unpack(string.explode(vidname, "/"))
+			if not programfile2 then
+				programfile2 = programfile
+			end
+			-- probe url for yesterday and today
+			for d = -1, 0 do
+				local y, m, d = unpack(ymdofs(d))
+				local localfilename = string.format(vidfilepattern, programname, y, m, d)
+				local remotefilename = string.format(vidfilepattern, programfile2, y, m, d)
+				local vidurl = string.format(vidurlpattern, programfile, remotefilename)
+				local filepath = lfs.concatfilenames(dirstatic, channel, localfilename)
+				if not lfs.exists(filepath) then
+					ok, code = dw.download(vidurl, filepath)
+					if not ok then
+						log.warn(_NAME..": Error downloading video `"..vidurl.."'. "..code)
+						lfs.delete(filepath)
+					end
+				end
+			end
 		end
 	end
 	return true
