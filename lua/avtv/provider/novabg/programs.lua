@@ -32,6 +32,10 @@ local function ymdofs(day)
 	return { tonumber(dayofs(day, "%Y")), tonumber(dayofs(day, "%m")), tonumber(dayofs(day, "%d")) }
 end
 
+local function fromtimestamp(ts)
+	return os.date("%Y%m%d%H%M%S", tonumber(ts))
+end
+
 local channelupdater = {}
 
 -- FIXME: pattern for searching video url of program zdraveiblgariya
@@ -94,7 +98,7 @@ channelupdater.novatv = function (channel, sink)
 			prevhour = hour
 
 			-- set program id
-			program.id = os.time{year=date[1], month=date[2], day=date[3], hour=hour, min=min}
+			program.id = fromtimestamp(os.time{year=date[1], month=date[2], day=date[3], hour=hour, min=min})
 
 			-- set program summary (short description)
 			program.summary = taginfo[1] and tostring(taginfo[1])

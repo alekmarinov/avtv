@@ -28,6 +28,10 @@ local function day(offset)
 	return os.date("%Y%m%d000000", os.time() + offset * DAYSECS)
 end
 
+local function fromtimestamp(ts)
+	return os.date("%Y%m%d%H%M%S", tonumber(ts))
+end
+
 local IMAGE_SIZE = "253_190"
 
 -- updates Wilmaa programs for given channel list and call sink callback for each new program extracted
@@ -112,9 +116,9 @@ function update(channels, sink)
 						genremap = genremap or string.explode(genre, seperator)
 						subgenremap = subgenremap or string.explode(subgenre, ",")
 						local program = {
-							id = programvalues.from,
+							id = fromtimestamp(programvalues.from),
+							stop = fromtimestamp(programvalues.to),
 							tele_id = programvalues.tele_id,
-							stop = programvalues.to,
 							title = programvalues.title,
 							subtitle = programvalues.subtitle,
 							 -- genre index is zero based
