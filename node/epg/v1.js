@@ -177,7 +177,7 @@ function programsQuery(res, next, rclient, params)
 			}
 			if (programsrows.length > 0)
 			{
-				var json = {meta: ["id", "stop", "title"], data: []}
+				var json = {meta: ["start", "stop", "title"], data: []}
 				for (var i = 0; i < programsrows.length / 3; i++)
 				{
 					json.data.push([programsrows[i * 3], programsrows[i * 3 + 1], programsrows[i * 3 + 2]])
