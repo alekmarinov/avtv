@@ -15,8 +15,8 @@ local string = require "lrun.util.string"
 local config = require "avtv.config"
 local log    = require "avtv.log"
 
-local io, os, type, assert, ipairs, table, require =
-      io, os, type, assert, ipairs, table, require
+local io, os, type, assert, ipairs, table, require, tonumber =
+      io, os, type, assert, ipairs, table, require, tonumber
 local print, pairs = print, pairs
 
 module "avtv.provider.wilmaa.channels"
@@ -83,28 +83,32 @@ function update(sink)
 	end
 	local thumburl, thumbsize
 	for i, v in ipairs(dom) do
-		if v.tag and string.lower(v.tag) == "logos" then
-			for j, k in ipairs(v) do
-				if k.tag and string.lower(k.tag) == "baseUrl" then
-					thumburl = k[1]
-				elseif k.tag and string.lower(k.tag) == "sizes" then
-					local size = 0
-					for l, m in ipairs(k) do
-						if m.tag and string.lower(m.tag) == "size" then
-							local wxh = tonumber(m.attr.width) * tonumber(m.attr.height)
-							if wxh > size then
-								thumbsize = m[1]
-								size = wxh
+		if v.tag and string.lower(v.tag) == "defaults" then
+			for q, p in ipairs(v) do
+				if p.tag and string.lower(p.tag) == "logos" then
+					for j, k in ipairs(p) do
+						if k.tag and string.lower(k.tag) == "baseurl" then
+							thumburl = k[1]
+						elseif k.tag and string.lower(k.tag) == "sizes" then
+							local size = 0
+							for l, m in ipairs(k) do
+								if m.tag and string.lower(m.tag) == "size" then
+									local wxh = tonumber(m.attr.width) * tonumber(m.attr.height)
+									if wxh > size then
+										thumbsize = m[1]
+										size = wxh
+									end
+								end
 							end
 						end
 					end
+					if thumbsize then
+						thumburl = string.gsub(thumburl, "{SIZE}", thumbsize)
+					else
+						log.warn(_NAME..": Unable to find logo/size tag. Channel urls will not be downloaded")
+						thumburl = nil
+					end
 				end
-			end
-			if thumbsize then
-				thumburl = string.gsub(thumburl, "{SIZE}", thumbsize)
-			else
-				log.warn(_NAME..": Unable to find logo/size tag. Channel urls will not be downloaded")
-				thumburl = nil
 			end
 		elseif v.tag and string.lower(v.tag) == "channels" then
 			for j, k in ipairs(v) do
