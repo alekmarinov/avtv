@@ -33,10 +33,10 @@ function update(sink)
 		{
 			id = id,
 			title = config.getstring("epg.novabg."..id..".title"),
-			thumbnail = thumbname
+			thumbnail = "logo"..lfs.ext(logourl)
 		}
 
-		local thumbfile = lfs.concatfilenames(dirstatic, id, "logo"..lfs.ext(logourl))
+		local thumbfile = lfs.concatfilenames(dirstatic, id, channel.thumbnail)
 		lfs.mkdir(lfs.dirname(thumbfile))
 		if not lfs.exists(thumbfile) then
 			local ok, code = dw.download(logourl, thumbfile)
