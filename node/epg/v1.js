@@ -175,19 +175,12 @@ function programsQuery(res, next, rclient, params)
 			{
 				return onError(err, res, next)
 			}
-			if (programsrows.length > 0)
+			var json = {meta: ["start", "stop", "title"], data: []}
+			for (var i = 0; i < programsrows.length / 3; i++)
 			{
-				var json = {meta: ["start", "stop", "title"], data: []}
-				for (var i = 0; i < programsrows.length / 3; i++)
-				{
-					json.data.push([programsrows[i * 3], programsrows[i * 3 + 1], programsrows[i * 3 + 2]])
-				}
-				res.send(json)
+				json.data.push([programsrows[i * 3], programsrows[i * 3 + 1], programsrows[i * 3 + 2]])
 			}
-			else
-			{
-				res.send(404)
-			}
+			res.send(json)
 		})
 	}
 	else
