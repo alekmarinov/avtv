@@ -196,7 +196,7 @@ function apiV1(rclient)
 		var params = req.params[0]
 
 		// notify http client with the character encoding type
-		res.setEncoding('utf8');
+		res.charSet('utf8');
 
 		// strip last / if any
 		if (params.charAt(params.length - 1) === '/')
