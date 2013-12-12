@@ -86,7 +86,7 @@ function rawQuery(res, next, rclient, keyArr)
 	})
 }
 
-function channelsQuery(res, next, rclient, params)
+function channelsQuery(res, next, rclient, params, attr)
 {
 	if (params.length < 1)
 	{
@@ -101,7 +101,14 @@ function channelsQuery(res, next, rclient, params)
 	{
 		case 1:
 			// use redis sort to extract additional objects info
-			return rclient.sort(prefix + 'channels', 'by', 'nosort', 'get', '#', 'get', prefix + '*.title', 'get', prefix + '*.thumbnail', function onSortChannels(err, channelrows)
+			attr = ["title", "thumbnail"].concat(attr)
+			var args = [prefix + 'channels', 'by', 'nosort', 'get', '#'];
+			for (var i = 0; i < attr.length; i++)
+			{
+				args.push('get')
+				args.push(prefix + '*.' + attr[i])
+			}
+			args.push(function onSortChannels(err, channelrows)
 			{
 				if (err)
 				{
@@ -109,10 +116,11 @@ function channelsQuery(res, next, rclient, params)
 				}
 				if (channelrows.length > 0)
 				{
-					var json = {meta: ["id", "title", "thumbnail"], data: []}
-					for (var i = 0; i < channelrows.length / 3; i++)
+					var json = {meta: ["id"].concat(attr), data: []}
+					var attrcount = attr.length + 1
+					for (var i = 0; i < channelrows.length / attrcount; i++)
 					{
-						json.data.push([channelrows[i * 3], channelrows[i * 3 + 1], channelrows[i * 3 + 2]])
+						json.data.push(channelrows.slice(i * attrcount, (i + 1) * attrcount))
 					}
 					res.send(json)
 				}
@@ -122,6 +130,9 @@ function channelsQuery(res, next, rclient, params)
 				}
 				next()
 			})
+
+			return rclient.sort.apply(rclient, args)
+			// (prefix + 'channels', 'by', 'nosort', 'get', '#', 'get', prefix + '*.title', 'get', prefix + '*.thumbnail', )
 		case 2:
 			var channelId = params[1]
 			// request channel info
@@ -152,7 +163,7 @@ function channelsQuery(res, next, rclient, params)
 	}
 }
 
-function programsQuery(res, next, rclient, params)
+function programsQuery(res, next, rclient, params, attr)
 {
 	if (params.length < 2)
 	{
@@ -169,19 +180,28 @@ function programsQuery(res, next, rclient, params)
 		var prefix = 'epg.' + provider + '.' + channelId + '.'
 
 		// use redis sort to extract additional objects info
-		return rclient.sort(prefix + 'programs', 'get', '#', 'get', prefix + '*.stop', 'get', prefix + '*.title', function onSortPrograms(err, programsrows)
+		attr = ["stop", "title"].concat(attr)
+		var args = [prefix + 'programs', 'get', '#'];
+		for (var i = 0; i < attr.length; i++)
+		{
+			args.push('get')
+			args.push(prefix + '*.' + attr[i])
+		}
+		args.push(function onSortPrograms(err, programsrows)
 		{
 			if (err)
 			{
 				return onError(err, res, next)
 			}
-			var json = {meta: ["start", "stop", "title"], data: []}
-			for (var i = 0; i < programsrows.length / 3; i++)
+			var json = {meta: ["start"].concat(attr), data: []}
+			var attrcount = attr.length + 1
+			for (var i = 0; i < programsrows.length / attrcount; i++)
 			{
-				json.data.push([programsrows[i * 3], programsrows[i * 3 + 1], programsrows[i * 3 + 2]])
+				json.data.push(programsrows.slice(i * attrcount, (i + 1) * attrcount))
 			}
 			res.send(json)
 		})
+		return rclient.sort.apply(rclient, args)
 	}
 	else
 	{
@@ -196,7 +216,7 @@ function apiV1(rclient)
 		var params = req.params[0]
 
 		// notify http client with the character encoding type
-		res.charSet('utf8');
+		res.charSet('utf8')
 
 		// strip last / if any
 		if (params.charAt(params.length - 1) === '/')
@@ -221,13 +241,20 @@ function apiV1(rclient)
 		var cmd = params[0]
 		params = params.slice(1)
 
+		// get attr from query
+		var attr = req.query['attr']
+		if (attr !== undefined)
+			attr = attr.split(',')
+		else
+			attr = []
+
 		switch (cmd)
 		{
 			case CMD_CHANNELS:
-				return channelsQuery(res, next, rclient, params)
+				return channelsQuery(res, next, rclient, params, attr)
 				break
 			case CMD_PROGRAMS:
-				return programsQuery(res, next, rclient, params)
+				return programsQuery(res, next, rclient, params, attr)
 				break
 			default:
 				res.send(404)

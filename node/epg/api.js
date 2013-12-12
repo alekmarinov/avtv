@@ -18,6 +18,7 @@ var server = restify.createServer(
 })
 
 server.use(restify.gzipResponse());
+server.use(restify.queryParser());
 server.get(/v1\/(.*)/, apiV1(redis.createClient()))
 
 server.listen(9090, function() {
