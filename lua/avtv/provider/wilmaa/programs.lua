@@ -113,6 +113,7 @@ function update(channels, sink)
 						for l, paramname in ipairs(sequencemap) do
 							programvalues[paramname] = programvalues[l]
 						end
+						programvalues.image = programvalues.image..lfs.ext(imageurltempl)
 						genremap = genremap or string.explode(genre, seperator)
 						subgenremap = subgenremap or string.explode(subgenre, ",")
 						local program = {
@@ -129,7 +130,7 @@ function update(channels, sink)
 
 						local channel = programvalues.channel_id
 						local imageurl = string.gsub(imageurltempl, "%[ID%]", programvalues.image)
-						local imagefile = lfs.concatfilenames(dirstatic, channel, programvalues.image..".jpg")
+						local imagefile = lfs.concatfilenames(dirstatic, channel, programvalues.image)
 						if not lfs.exists(imagefile) then
 							-- download program image
 							lfs.mkdir(lfs.dirname(imagefile))
