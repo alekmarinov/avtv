@@ -139,7 +139,6 @@ function channelsQuery(res, next, rclient, params, attr)
 			var args = [];
 			for (var i = 0; i < attr.length; i++)
 			{
-				console.log("request attr: " + attr[i])
 				args.push(prefix + attr[i])
 			}
 			args.push(function onMGet(err, resValues)
