@@ -132,6 +132,39 @@ function channelsQuery(res, next, rclient, params, attr)
 			})
 
 			return rclient.sort.apply(rclient, args)
+		case 2:
+			var channelId = params[1]
+			attr = ["id", "title", "thumbnail"].concat(attr)
+			prefix = prefix + channelId + '.'
+			var args = [];
+			for (var i = 0; i < attr.length; i++)
+			{
+				console.log("request attr: " + attr[i])
+				args.push(prefix + attr[i])
+			}
+			args.push(function onMGet(err, resValues)
+			{
+				if (err)
+				{
+					return onError(err, res, next)
+				}
+				if (resValues[0] !== null)
+				{
+					var json = {}
+					for (var i = 0; i < attr.length; i++)
+					{
+						json[attr[i]] = resValues[i]
+					}
+					res.send(json)
+				}
+				else
+				{
+					res.send(404)
+				}
+				next()
+			})
+			// request channel details
+			return rclient.mget.apply(rclient, args)
 		default:
 			return rawQuery(res, next, rclient, params)
 	}
