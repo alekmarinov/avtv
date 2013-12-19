@@ -132,32 +132,6 @@ function channelsQuery(res, next, rclient, params, attr)
 			})
 
 			return rclient.sort.apply(rclient, args)
-			// (prefix + 'channels', 'by', 'nosort', 'get', '#', 'get', prefix + '*.title', 'get', prefix + '*.thumbnail', )
-		case 2:
-			var channelId = params[1]
-			// request channel info
-			prefix = prefix + channelId + '.'
-			return rclient.mget(prefix + 'id', prefix + 'title', prefix + 'thumbnail', function onMGet(err, resValues)
-			{
-				if (err)
-				{
-					return onError(err, res, next)
-				}
-				if (resValues[0] !== null)
-				{
-					var json = {
-						id: resValues[0],
-						title: resValues[1],
-						thumbnail: resValues[2]
-					}
-					res.send(json)
-				}
-				else
-				{
-					res.send(404)
-				}
-				next()
-			})
 		default:
 			return rawQuery(res, next, rclient, params)
 	}
@@ -252,10 +226,8 @@ function apiV1(rclient)
 		{
 			case CMD_CHANNELS:
 				return channelsQuery(res, next, rclient, params, attr)
-				break
 			case CMD_PROGRAMS:
 				return programsQuery(res, next, rclient, params, attr)
-				break
 			default:
 				res.send(404)
 				next()
