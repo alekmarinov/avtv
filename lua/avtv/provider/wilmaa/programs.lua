@@ -113,7 +113,7 @@ function update(channels, sink)
 						for l, paramname in ipairs(sequencemap) do
 							programvalues[paramname] = programvalues[l]
 						end
-						programvalues.image = programvalues.image..lfs.ext(imageurltempl)
+						programvalues.image = programvalues.image
 						genremap = genremap or string.explode(genre, seperator)
 						subgenremap = subgenremap or string.explode(subgenre, ",")
 						local program = {
