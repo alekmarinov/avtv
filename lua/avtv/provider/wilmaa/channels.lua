@@ -111,9 +111,11 @@ function update(sink)
 				end
 			end
 		elseif v.tag and string.lower(v.tag) == "channels" then
+			local tempchannels = {}
 			for j, k in ipairs(v) do
 				if k.tag and string.lower(k.tag) == "channel" then
 					local channel = {}
+					local ishd = false
 					for l, m in ipairs(k) do
 						local tag = m.tag and string.lower(m.tag)
 						if tag == "label" then
@@ -125,6 +127,12 @@ function update(sink)
 									channel.title = o[1]
 								end
 							end
+						elseif tag == "settings" then
+							for n, o in ipairs(m) do
+								if o.tag and string.lower(o.tag) == "hd" then
+									ishd = o[1] == "true"
+								end
+							end
 						elseif tag == "streams" then
 							for n, o in ipairs(m) do
 								if o.tag and string.lower(o.tag) == "stream" then
@@ -134,7 +142,8 @@ function update(sink)
 											table.insert(channel.streams, {
 												language = q.attr.lang,
 												dvr = q.attr.dvr,
-												url = q[1]
+												url = q[1],
+												hd = ishd and 1 or 0
 											})
 										end
 									end									
@@ -158,9 +167,43 @@ function update(sink)
 					end
 					-- sink channel
 					log.debug(_NAME..": extracted channel "..channel.id)
-					if not sink(channel) then
-						return nil, "interrupted"
+
+					table.insert(tempchannels, channel)
+				end
+			end
+			-- union channels and their streams
+			log.debug(_NAME..": unioning channels list")
+			local channelsmap = {}
+			local newchannels = {}
+			for i = 1, #tempchannels do
+				local channel = tempchannels[i]
+				if not channelsmap[channel.id] then
+					table.insert(newchannels, channel)
+					channelsmap[channel.id] = channel
+				else
+					channel = channelsmap[channel.id]
+				end
+				for j = i + 1, #tempchannels do
+					if channel.id == tempchannels[j].id then
+						for _, tempstream in ipairs(tempchannels[j].streams or {}) do
+							local isnewstream = true
+							for _, stream in ipairs(channel.streams or {}) do
+								if stream.url == tempstream.url then
+									isnewstream = false
+								end
+							end
+							if isnewstream then
+								table.insert(channel.streams, tempstream)
+							end
+						end
 					end
+				end
+			end
+
+			log.debug(_NAME..": inserting channels "..table.getn(newchannels).." channels")
+			for _, channel in ipairs(newchannels) do
+				if not sink(channel) then
+					return nil, "sink interrupted"
 				end
 			end
 		end
