@@ -90,11 +90,11 @@ function update(sink)
 						if k.tag and string.lower(k.tag) == "baseurl" then
 							thumburl = k[1]
 						elseif k.tag and string.lower(k.tag) == "sizes" then
-							local size = 0
+							local size = 500*500
 							for l, m in ipairs(k) do
 								if m.tag and string.lower(m.tag) == "size" then
 									local wxh = tonumber(m.attr.width) * tonumber(m.attr.height)
-									if wxh > size then
+									if wxh < size then
 										thumbsize = m[1]
 										size = wxh
 									end
