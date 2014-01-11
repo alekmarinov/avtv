@@ -17,8 +17,8 @@ local string  = require "lrun.util.string"
 local config  = require "avtv.config"
 local log     = require "avtv.log"
 
-local io, os, type, assert, ipairs, table =
-      io, os, type, assert, ipairs, table
+local io, os, type, assert, ipairs, table, tonumber =
+      io, os, type, assert, ipairs, table, tonumber
 local print, pairs = print, pairs
 
 module "avtv.provider.rayv.programs"
