@@ -8,13 +8,14 @@
 --                                                                   --
 -----------------------------------------------------------------------
 
-local dw     = require "lrun.net.www.download.luasocket"
-local gzip   = require "luagzip"
-local lom    = require "lxp.lom"
-local lfs    = require "lrun.util.lfs"
-local string = require "lrun.util.string"
-local config = require "avtv.config"
-local log    = require "avtv.log"
+local dw      = require "lrun.net.www.download.luasocket"
+local gzip    = require "luagzip"
+local utf8    = require "unicode"
+local lom     = require "lxp.lom"
+local lfs     = require "lrun.util.lfs"
+local string  = require "lrun.util.string"
+local config  = require "avtv.config"
+local log     = require "avtv.log"
 
 local io, os, type, assert, ipairs, table =
       io, os, type, assert, ipairs, table
@@ -27,6 +28,12 @@ local DAYSECS = 24*60*60
 
 local function day(offset)
 	return os.date("%Y%m%d000000", os.time() + offset * DAYSECS)
+end
+
+local function htmlcharsdecode(html)
+	local result = string.gsub(html, "&#(%d+);", function (code)
+		return utf8.char(tonumber(code))
+	end)
 end
 
 -- updates RayV programs for given channel list and call sink callback for each new program extracted
@@ -97,14 +104,14 @@ function update(channels, sink)
 			for j, k in ipairs(v) do
 				local tag = string.lower(k.tag)
 				if tag == "title" then
-					program.title = k[1]
+					program.title = htmlcharsdecode(k[1])
 				elseif tag == "sub-title" then
-					program.subtitle = k[1]
+					program.subtitle = htmlcharsdecode(k[1])
 				elseif tag == "category" then
 					program.category = program.category or {}
-					table.insert(program.category, k[1])
+					table.insert(program.category, htmlcharsdecode(k[1]))
 				elseif tag == "desc" then
-					program.description = k[1]
+					program.description = htmlcharsdecode(k[1])
 				elseif tag == "date" then
 					program.date = k[1]
 				elseif tag == "country" then
@@ -123,14 +130,14 @@ function update(channels, sink)
 					for l, m in ipairs(k) do
 						local tag = string.lower(m.tag)
 						if tag == "director" then
-							program.credits.director = m[1]
+							program.credits.director = htmlcharsdecode(m[1])
 						elseif tag == "actor" then
 							program.credits.actor = program.credits.actor or {}
-							table.insert(program.credits.actor, m[1])
+							table.insert(program.credits.actor, (m[1]))
 						elseif tag == "writer" then
-							program.credits.writer = m[1]
+							program.credits.writer = htmlcharsdecode(m[1])
 						elseif tag == "presenter" then
-							program.credits.presenter = m[1]
+							program.credits.presenter = htmlcharsdecode(m[1])
 						end
 					end
 				elseif tag == "video" then
