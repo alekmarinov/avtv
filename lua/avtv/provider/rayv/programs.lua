@@ -34,6 +34,7 @@ local function htmlcharsdecode(html)
 	local result = string.gsub(html, "&#(%d+);", function (code)
 		return utf8.char(tonumber(code))
 	end)
+	return result
 end
 
 -- updates RayV programs for given channel list and call sink callback for each new program extracted
