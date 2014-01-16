@@ -22,12 +22,16 @@ local epg = {
 	{
 		channels = require "avtv.provider.wilmaa.channels",
 		programs = require "avtv.provider.wilmaa.programs",
-	}
-	,
+	},
 	novabg =
 	{
 		channels = require "avtv.provider.novabg.channels",
 		programs = require "avtv.provider.novabg.programs",
+	},
+	bulsat =
+	{
+		channels = require "avtv.provider.bulsat.channels",
+		programs = require "avtv.provider.bulsat.programs",
 	}
 }
 

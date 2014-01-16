@@ -101,7 +101,6 @@ function update(sink)
 				log.warn(_NAME..": channel "..channel.id.." have invalid thumbnail image")
 			else
 				local thumbname = "logo"..thumbext
-				print(dirstatic, channel.id, thumbname)
 				local thumbfile = lfs.concatfilenames(dirstatic, channel.id, thumbname)
 				lfs.mkdir(lfs.dirname(thumbfile))
 				log.debug(_NAME..": downloading `"..thumbnailurl.."' to `"..thumbfile.."'")
