@@ -48,7 +48,7 @@ _HELP =
 [[
 UPDATE [provider {' ' provider}]
   Update EPG data for the specified providers given as command arguments.
-  The provider can be any of ]]..table.concat(table.keys(epg, true), ", ")..[[
+  Available providers: ]]..table.concat(table.keys(epg, true), ", ")..[[
 ]]
 
 local function time(n, f)
