@@ -21,7 +21,7 @@ server.use(restify.gzipResponse());
 server.use(restify.queryParser());
 server.get(/v1\/(.*)/, apiV1(redis.createClient()))
 server.get(/\/static\/*.*/, restify.serveStatic({
-  directory: './node'
+  directory: './node/epg'
 }));
 
 server.listen(9090, function() {

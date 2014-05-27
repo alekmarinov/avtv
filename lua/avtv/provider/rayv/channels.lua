@@ -90,7 +90,7 @@ function update(sink)
 				elseif tag == "title" then
 					channel.title = k[1]
 				elseif tag == "media:thumbnail" then
-					thumbnailurl = k.attr.url
+					thumbnailurl = string.trim(k.attr.url)
 					thumbnailwidth = k.attr.width
 					thumbnailheight = k.attr.height
 				end

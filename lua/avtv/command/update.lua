@@ -28,10 +28,15 @@ local epg = {
 		channels = require "avtv.provider.novabg.channels",
 		programs = require "avtv.provider.novabg.programs",
 	},
+	bulsat_com =
+	{
+		channels = require "avtv.provider.bulsat_com.channels",
+		programs = require "avtv.provider.bulsat_com.programs",
+	},
 	bulsat =
 	{
-		channels = require "avtv.provider.bulsat.channels",
-		programs = require "avtv.provider.bulsat.programs",
+		channels = require "avtv.provider.bulsat.epg",
+		programs = require "avtv.provider.bulsat.epg"
 	}
 }
 

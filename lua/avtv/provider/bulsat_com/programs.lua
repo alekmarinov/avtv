@@ -20,7 +20,7 @@ local io, os, type, assert, ipairs, table, tonumber, tostring =
       io, os, type, assert, ipairs, table, tonumber, tostring
 local print, pairs = print, pairs
 
-module "avtv.provider.bulsat.programs"
+module "avtv.provider.bulsat_com.programs"
 
 local MonthNames = {"януари", "февруари", "март", "април", "май", "юни", "юли", "август", "септември", "октомври", "ноември", "декември"}
 
@@ -39,7 +39,7 @@ function update(channelids, sink)
 	for _, channelid in ipairs(channelids) do
 		local programsfile = lfs.concatfilenames(dirdata, "programs".."_"..channelid.."-"..os.date("%Y%m%d")..".html")
 		if not lfs.exists(programsfile) then
-			local channelurl = lfs.concatfilenames(config.getstring("epg.bulsat.baseurl"), "tv-programa.php")
+			local channelurl = lfs.concatfilenames(config.getstring("epg.bulsat_com.baseurl"), "tv-programa.php")
 			channelurl = channelurl.."?go="..channelid
 			local ok, code = dw.download(channelurl, programsfile)
 			if not ok then
