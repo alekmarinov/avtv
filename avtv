@@ -1,0 +1,2 @@
+#!/bin/sh
+LUA_PATH=$AVTV_HOME/lua/?.lua lrun "$LRUN_HOME/share/lua/lrun/start.lua" avtv.main -c "$AVTV_HOME/etc/avtv.conf" $*
