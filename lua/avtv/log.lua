@@ -33,9 +33,18 @@ local function newfile()
 end
 
 local function newemail()
+
+	local function tolist(s)
+		local list = {}
+		string.gsub(","..s, ",([^,]*)", function (item)
+			table.insert(list, item)
+		end)
+		return list
+	end
+
 	return logging.email{
 		from=config.get(_conf, "log.email.from"),
-		rcpt=config.get(_conf, "log.email.rcpt"),
+		rcpt=tolist(config.get(_conf, "log.email.rcpt")),
 		headers = {
 			subject = config.get(_conf, "log.email.subject")
 		}

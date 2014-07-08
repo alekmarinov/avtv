@@ -37,6 +37,11 @@ local epg = {
 	{
 		channels = require "avtv.provider.bulsat.epg",
 		programs = require "avtv.provider.bulsat.epg"
+	},
+	zattoo =
+	{
+		channels = require "avtv.provider.zattoo.epg",
+		programs = require "avtv.provider.zattoo.epg"
 	}
 }
 
@@ -92,12 +97,14 @@ local function updateprovider(provider)
 	log.info(_NAME..": "..table.getn(channelids).." channels inserted in "..provider.." provider")
 
 	local programids = {}
+	local nprograms = 0
 	ok, err = time("epg."..provider..".programs.update", function () 
 		return epg[provider].programs.update(channelids, function (channelid, program) 
 			if programsexpire > 0 then
 				program.__expire = programsexpire
 			end
 			_G._rdb.epg[provider][channelid](program)
+			nprograms = nprograms + 1
 			programids[channelid] = programids[channelid] or {__expire = programsexpire}
 			table.insert(programids[channelid], program.id)
 			return true
@@ -106,10 +113,12 @@ local function updateprovider(provider)
 	if not ok then
 		return nil, err
 	end
+	log.info(_NAME..": "..nprograms.." programs inserted in "..provider.." provider")
 	for channelid, programsid in pairs(programids) do
 		_G._rdb.epg[provider][channelid].__delete("programs")
 		_G._rdb.epg[provider][channelid].__rpush("programs", programids[channelid])
 	end
+	log.info(_NAME..": updating "..provider.." completed")
 	return true
 end
 

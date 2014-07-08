@@ -10,12 +10,13 @@
 
 var CMD_CHANNELS = "channels"
 var CMD_PROGRAMS = "programs"
+var MAX_LIST_RANGE = 10
 
 function onError(err, res, next)
 {
 	if (err)
 	{
-		console.log("Error: " + err)
+		console.error("Error: " + err)
 		res.send(500)
 		next()
 		return false
@@ -42,7 +43,7 @@ function rawQuery(res, next, rclient, keyArr)
 	{
 		res.send(403)
 		next()
-		return false;
+		return false
 	}
 
 	// request all keys in epg namespace
@@ -50,13 +51,13 @@ function rawQuery(res, next, rclient, keyArr)
 	{
 		if (err)
 		{
-			return onError(err, res, next);
+			return onError(err, res, next)
 		}
 		if (resKeys.length === 0)
 		{
-			res.send(404);
-			next();
-			return;
+			res.send(404)
+			next()
+			return
 		}
 		// request all key values
 		rclient.mget(resKeys, function onMGet(err, resValues)
@@ -65,14 +66,33 @@ function rawQuery(res, next, rclient, keyArr)
 			{
 				return onError(err, res, next)
 			}
-			var json;
+			var json
+			// shall result one value?
 			if (resKeys.length === 1 && resKeys[0].length === keys.length)
 			{
-				json = resValues[0]
+				// verify if the valus is redis list
+				rclient.lrange(resKeys[0], 0, MAX_LIST_RANGE, function onMGet(err, resRangeValues){
+					if (err)
+					{
+						json = resValues[0]
+						if (!json) json = ""
+						res.contentType = 'text/plain'
+					}
+					else
+					{
+						json = {
+							meta: [resKeys[0]],
+							data: resRangeValues
+						}
+					}
+					res.send(json)
+					next()
+				})
 			}
 			else
 			{
-				var stripKey = keys.length + 1;
+				// result multiple values
+				var stripKey = keys.length + 1
 				// create json object { key = value }
 				json = {}
 				for (var i = 0; i < resKeys.length; i++)
@@ -80,9 +100,13 @@ function rawQuery(res, next, rclient, keyArr)
 					json[resKeys[i].substring(stripKey)] = resValues[i]
 				}
 			}
-			res.send(json)
-			next()
+			if (json)
+			{
+				res.send(json)
+				next()
+			}
 		})
+		return true
 	})
 }
 
@@ -92,17 +116,17 @@ function channelsQuery(res, next, rclient, params, attr)
 	{
 		res.send(403)
 		next()
-		return false;
+		return false
 	}
 	// extract provider
 	var provider = params[0]
-	var prefix = 'epg.' + provider + '.';
+	var prefix = 'epg.' + provider + '.'
 	switch (params.length)
 	{
 		case 1:
 			// use redis sort to extract additional objects info
 			attr = ["title", "thumbnail"].concat(attr)
-			var args = [prefix + 'channels', 'by', 'nosort', 'get', '#'];
+			var args = [prefix + 'channels', 'by', 'nosort', 'get', '#']
 			for (var i = 0; i < attr.length; i++)
 			{
 				args.push('get')
@@ -136,7 +160,7 @@ function channelsQuery(res, next, rclient, params, attr)
 			var channelId = params[1]
 			attr = ["id", "title", "thumbnail"].concat(attr)
 			prefix = prefix + channelId + '.'
-			var args = [];
+			var args = []
 			for (var i = 0; i < attr.length; i++)
 			{
 				args.push(prefix + attr[i])
@@ -164,6 +188,7 @@ function channelsQuery(res, next, rclient, params, attr)
 			})
 			// request channel details
 			return rclient.mget.apply(rclient, args)
+
 		default:
 			return rawQuery(res, next, rclient, params)
 	}
@@ -187,7 +212,7 @@ function programsQuery(res, next, rclient, params, attr)
 
 		// use redis sort to extract additional objects info
 		attr = ["stop", "title"].concat(attr)
-		var args = [prefix + 'programs', 'get', '#'];
+		var args = [prefix + 'programs', 'get', '#']
 		for (var i = 0; i < attr.length; i++)
 		{
 			args.push('get')
