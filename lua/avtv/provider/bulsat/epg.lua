@@ -185,13 +185,17 @@ local function parseprogramsxml(xml, channels)
 		return type(tag) == "table" and string.lower(tag.tag) == name
 	end
 	local function mktime(timespec)
+		-- if no need to format date time if comming in GMT
+		-- local formated = timespec:sub(1, 4)..timespec:sub(5, 6)..timespec:sub(7, 8)..timespec:sub(9, 10)..timespec:sub(11, 12)..timespec:sub(13, 14)
+		-- return formated
+
 		local timestamp = os.time{year=tonumber(timespec:sub(1, 4)), month=tonumber(timespec:sub(5, 6)), day=tonumber(timespec:sub(7, 8)), hour=tonumber(timespec:sub(9, 10)), min=tonumber(timespec:sub(11, 12)), sec=tonumber(timespec:sub(13, 14))}
 		local mul = 1
 		if timespec:sub(16, 16) == "-" then
 			mul = -1
 		end
 		local offset = mul * (60 * 60 * tonumber(timespec:sub(17, 18)) + 60 * tonumber(timespec:sub(19, 20)))
-		timestamp = timestamp - offset
+		-- timestamp = timestamp - 2 * offset
 		local formated = os.date("%Y%m%d%H%M%S", timestamp)
 		--log.debug(_NAME..": mktime "..timespec.." -> "..formated.." with offset "..offset)
 		return formated
