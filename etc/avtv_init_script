@@ -56,7 +56,7 @@ start() {
  
     # Launch the application
     daemon --user=root \
-      $forever start -p $forever_dir --pidFile $pidfile -l $logfile \
+      $forever start -p $forever_dir --pidFile $pidfile -m 0 -l $logfile \
       -a -d $SOURCE_DIR
     RETVAL=$?
   else
@@ -68,8 +68,9 @@ start() {
 stop() {
   echo -n "Shutting down $NAME node instance : "
   if [ "$foreverid" != "" ]; then
-    curl http://localhost:9090/shutdown
-    $forever stop -p $forever_dir $id
+    curl http://127.0.0.1:9090/shutdown 2> /dev/null
+    echo $forever stop $SOURCE_DIR
+    $forever stop $SOURCE_DIR
   else
     echo "Instance is not running";
   fi
@@ -84,9 +85,10 @@ fi
 
 if [ "$pid" != "" ]; then
   # Genarly sed usage to obtain the foreverid.
-  sed1="/$pid\]/p"
-  sed2="s/.*\[\([0-9]\+\)\].*\s$pid\.*/\1/g"
-  foreverid=`$forever list -p $forever_dir | $sed -n $sed1 | $sed $sed2`
+  forever columns rm logfile
+  forever columns rm uptime
+  flist=`forever list`
+  foreverid=`echo $flist | cut -d " " -f 18`
 else
   foreverid=""
 fi
