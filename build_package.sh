@@ -54,5 +54,6 @@ TARGET_DIR=$1
 ROOT_DIR=$(root_dir)
 
 AVTV_VERSION=$(app_version $ROOT_DIR)
+sed -i "s/_VERSION =.*/_VERSION = \"$AVTV_VERSION\";/" $VERSION_FILE lua/avtv/main.lua
 ZIP_PACKAGE=avtv-$AVTV_VERSION.zip
 zip -r $TARGET_DIR/$ZIP_PACKAGE avtv etc lua node
