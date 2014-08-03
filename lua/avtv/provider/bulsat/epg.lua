@@ -34,6 +34,12 @@ local function downloadxml(epgurl)
 	return ok
 end
 
+local function normchannelid(id)
+	id = tostring(id)
+	id = string.gsub(id, "%.", "_")
+	return id
+end
+
 --[[
 -- create id from string
 local function mkid(channel)
@@ -109,7 +115,7 @@ local function parsechannelsxml(xml)
 		local ext = lfs.ext(url)
 		local thumbname = "logo"..ext
 		local dirstatic = config.getstring("epg.bulsat.dir.static")
-		local thumbfile = lfs.concatfilenames(dirstatic, tostring(channelid), thumbname)
+		local thumbfile = lfs.concatfilenames(dirstatic, channelid, thumbname)
 		lfs.mkdir(lfs.dirname(thumbfile))
 		log.debug(_NAME..": downloading `"..url.."' to `"..thumbfile.."'")
 		ok, err = dw.download(url, thumbfile)
@@ -148,7 +154,7 @@ local function parsechannelsxml(xml)
 				elseif istag(m, "epg_id") then
 					channel.epg_id = tonumber(m[1])
 				elseif istag(m, "epg_name") then
-					channel.id = m[1]
+					channel.id = normchannelid(m[1])
 				elseif istag(m, "title") then
 					channel.title = m[1]
 				elseif istag(m, "genre") then
@@ -217,7 +223,7 @@ local function parseprogramsxml(xml, channels)
 		local ext = lfs.ext(url)
 		local thumbname = "logo"..ext
 		local dirstatic = config.getstring("epg.bulsat.dir.static")
-		local thumbfile = lfs.concatfilenames(dirstatic, tostring(channelid), thumbname)
+		local thumbfile = lfs.concatfilenames(dirstatic, channelid, thumbname)
 		lfs.mkdir(lfs.dirname(thumbfile))
 		log.debug(_NAME..": downloading `"..url.."' to `"..thumbfile.."'")
 		ok, err = dw.download(url, thumbfile)
@@ -238,7 +244,7 @@ local function parseprogramsxml(xml, channels)
 				id = mktime(k.attr.start),
 				stop = mktime(k.attr.stop),
 			}
-			local channelid = k.attr.channel
+			local channelid = normchannelid(k.attr.channel)
 			if not channels[channelid] then
 				logerror("missing channel "..channelid.." for program on "..program.id)
 			else
