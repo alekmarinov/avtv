@@ -135,7 +135,13 @@ local function parsechannelsxml(xml)
 	local channels = {}
 	for j, k in ipairs(dom) do
 		if istag(k, "tv") then
-			local channel = {}
+			local channel = {
+				ndvr = 0,
+				streams = {
+					{ type = "live", url = nil },
+					{ type = "ndvr", url = nil }
+				}
+			}
 			for l, m in ipairs(k) do
 				if istag(m, "channel") then
 					channel.channel = tonumber(m[1])
@@ -158,11 +164,14 @@ local function parsechannelsxml(xml)
 					-- download selected logo
 					-- channel.thumbnail_selected = downloadlogo(channel, m[1])
 				elseif istag(m, "sources") then
-					channel.streams = {{url = m[1]}}
+					channel.streams[1].url = m[1]
 				elseif istag(m, "has_dvr") then
-					channel.has_dvr = m[1]
+					if not tonumber(m[1]) then
+						log.warn(_NAME..": unexpected has_dvr value `"..(m[1] or "").."' for channel id "..channel.id)
+					end
+					channel.ndvr = tonumber(m[1]) or 0
 				elseif istag(m, "ndvr") then
-					channel.ndvr = m[1]
+					channel.streams[2].url = m[1]
 				elseif istag(m, "pg") then
 					channel.pg = m[1]
 				end
@@ -308,6 +317,7 @@ function update(channelids, sink)
 		-- sink programs
 		for _, channelid in ipairs(channelids) do
 			if _programsmap[channelid] then
+				log.info(_NAME..": Updating "..table.getn(_programsmap[channelid]).." programs in channel id "..channelid)
 				for _, program in ipairs(_programsmap[channelid]) do
 					if not sink(channelid, program) then
 						return nil, "interrupted"
