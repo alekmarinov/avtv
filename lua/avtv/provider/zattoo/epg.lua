@@ -100,10 +100,14 @@ local function loadchannels(zapi, sink)
 		return nil, err
 	end
 	for _, channelinfo in ipairs(res.body.channels) do
+		local thumbnail, err = downloadlogo(channelinfo.cid, channelinfo.logo_84)
+		if not thumbnail then
+			log.error(_NAME..": "..(err or "unknown error"))
+		end
 		local channel = {
 			id = channelinfo.cid,
 			title = channelinfo.title,
-			thumbnail = assert(downloadlogo(channelinfo.cid, channelinfo.logo_84))
+			thumbnail = thumbnail
 		}
 		ok, err = sink(channel)
 		if not ok then
