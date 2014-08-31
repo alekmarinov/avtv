@@ -22,6 +22,27 @@ htmltext = file:read("*a")
 file:close()
 
 local hom = html.parse(htmltext)
+local thumbtag = hom{ tag = "meta", itemprop="thumbnail"}
+local thumbnail = thumbtag[1] and thumbtag[1]("content")
+--local descrtag = hom{ tag = "div", itemprop="description"}
+local descrtag = hom{ tag = "div", class="show_description"}
+print("---")
+local description = {}
+for _, p in ipairs(descrtag[1].p) do
+	if p("class") == nil then
+		table.insert(description, tostring(p))
+	end
+end
+description = table.concat(description, "\n")
+
+local vidtag = hom{ tag = "meta", itemprop="contentURL"}
+local video = vidtag[1] and vidtag[1]("content")
+
+print("thumbnail: ", thumbnail)
+print("description: ", tostring(description))
+print("video: ", video)
+
+--[[
 local tagdescr = hom{ tag = "div", class="show_description" }
 tagdescr = tagdescr[1]
 local imgsrc = tagdescr.img[1]("src")
@@ -33,3 +54,4 @@ for i, descr in ipairs(descrtags) do
 	end
 end
 print(table.concat(descrarr, "\n"))
+]]

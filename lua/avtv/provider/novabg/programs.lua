@@ -124,15 +124,20 @@ channelupdater.novatv = function (channel, sink)
 					htmltext = file:read("*a")
 					file:close()
 					hom = html.parse(htmltext)
-					local tagdescr = hom{ tag = "div", class="show_description" }
-					tagdescr = tagdescr[1]
+
+					local tagdescr = hom{ tag = "div", itemprop="description"}
+					tagdescr = tagdescr[1] and tagdescr[1].p or tagdescr.p
+
 					if not tagdescr then
-						log.warn(_NAME..": Invalid details page `"..detailsurl.."'")
+						tagdescr = hom{ tag = "div", class="show_description"}
+						tagdescr = tagdescr[1] and tagdescr[1].p
+						if not tagdescr then
+							log.warn(_NAME..": Error parsing description from `"..detailsfile.."'. Can't find <div itemprop='description' or <div class='show_description'!")
+						end
 					else
 						-- extract program description
-						local ptags = tagdescr{ tag = "p" }
 						local descrarr = {}
-						for _, ptag in ipairs(ptags) do
+						for _, ptag in ipairs(tagdescr) do
 							if ptag("class") == nil then
 								table.insert(descrarr, tostring(ptag))
 							end
@@ -140,7 +145,8 @@ channelupdater.novatv = function (channel, sink)
 						program.description = table.concat(descrarr, "\n")
 
 						-- extract program thumbnail
-						local imgsrc = tagdescr.img[1]("src")
+						local thumbtag = hom{ tag = "meta", itemprop="thumbnail"}
+						local imgsrc = thumbtag[1]("content")
 						if string.starts(imgsrc, "http://") then
 							local thumbfile = lfs.basename(imgsrc)
 							-- set program thumbnail image
@@ -159,8 +165,8 @@ channelupdater.novatv = function (channel, sink)
 						end
 
 						-- extract program video
-						local vidurl = hom{ tag="a", class="h2_novaplay" }
-						vidurl = vidurl and vidurl[1]
+						local vidtag = hom{ tag = "meta", itemprop="contentURL"}
+						local vidurl = vidtag[1]("content")
 						if vidurl and string.starts(tostring(vidurl), "http://") then
 							program.video = lfs.basename(vidurl)
 						end

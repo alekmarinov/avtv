@@ -194,7 +194,7 @@ function channelsQuery(res, next, rclient, params, attr)
 	}
 }
 
-function programsQuery(res, next, rclient, params, attr)
+function programsQuery(res, next, rclient, params, attr, linkinfo)
 {
 	if (params.length < 2)
 	{
@@ -208,6 +208,18 @@ function programsQuery(res, next, rclient, params, attr)
 		// extract provider and channelId
 		var provider = params[0]
 		var channelId = params[1]
+
+		if (linkinfo[provider])
+		{
+			var chnlink = linkinfo[provider][channelId]
+			if (chnlink)
+			{
+				console.log("Linking " + provider + "/" + channelId + " to " + chnlink[0] + "/" + chnlink[1])
+				provider = chnlink[0]
+				channelId = chnlink[1]
+			}
+		}
+
 		var prefix = 'epg.' + provider + '.' + channelId + '.'
 
 		// use redis sort to extract additional objects info
@@ -240,7 +252,7 @@ function programsQuery(res, next, rclient, params, attr)
 	}
 }
 
-function apiV1(rclient)
+function apiV1(pkg, rclient)
 {
 	return function respond(req, res, next)
 	{
@@ -284,7 +296,7 @@ function apiV1(rclient)
 			case CMD_CHANNELS:
 				return channelsQuery(res, next, rclient, params, attr)
 			case CMD_PROGRAMS:
-				return programsQuery(res, next, rclient, params, attr)
+				return programsQuery(res, next, rclient, params, attr, pkg.epg.link)
 			default:
 				res.send(404)
 				next()

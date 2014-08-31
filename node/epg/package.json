@@ -18,5 +18,15 @@
   "license": "Copyright (c) AVIQ Bulgaria Ltd.",
   "engines": {
     "node": ">= 0.10.x"
+  },
+  "epg": {
+    "link": {
+      "bulsat": {
+        "novatv": [
+          "novabg",
+          "novatv"
+        ]
+      }
+    }
   }
 }

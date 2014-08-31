@@ -11,7 +11,7 @@
 var redis = require("redis")
 var restify = require("restify")
 var apiV1 = require("./v1")
-
+var pkg = require('./package')
 
 // snippet taken from http://catapulty.tumblr.com/post/8303749793/heroku-and-node-js-how-to-get-the-client-ip-address
 function getClientIp(req) {
@@ -32,7 +32,6 @@ function getClientIp(req) {
   return ipAddress
 }
 
-
 var server = restify.createServer(
 {
 	name: 'AVTV',
@@ -40,7 +39,7 @@ var server = restify.createServer(
 
 server.use(restify.gzipResponse())
 server.use(restify.queryParser())
-server.get(/v1\/(.*)/, apiV1(redis.createClient()))
+server.get(/v1\/(.*)/, apiV1(pkg, redis.createClient()))
 server.get(/\/static\/*.*/, restify.serveStatic({
   directory: './node/epg'
 }))
@@ -61,5 +60,5 @@ server.get("/shutdown", function(req, res, next)
 
 server.listen(9090, function()
 {
-  console.log('%s listening at %s', server.name, server.url)
+  console.log('%s v%s listening at %s', server.name, pkg.version, server.url)
 })
