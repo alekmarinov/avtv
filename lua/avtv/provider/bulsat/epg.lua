@@ -216,8 +216,7 @@ local function parseprogramsxml(xml, channels)
 		return formated
 	end
 	local function downloadimage(channelid, url)
-		local ext = lfs.ext(url)
-		local thumbname = lfs.basename(url)..ext
+		local thumbname = lfs.basename(url)
 		local dirstatic = config.getstring("epg.bulsat.dir.static")
 		local thumbfile = lfs.concatfilenames(dirstatic, channelid, thumbname)
 		if not lfs.exists(thumbfile) then
