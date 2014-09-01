@@ -106,7 +106,7 @@ local function parsechannelsxml(xml)
 	local function istag(tag, name)
 		return type(tag) == "table" and string.lower(tag.tag) == name
 	end
-	local function downloadlogo(channel, url)
+	local function downloadimage(channel, url)
 		local channelid = channel.id
 		if not channelid then
 			log.warn(_NAME..": Can't download the logo of channel without id: "..channeltostring(channel))
@@ -165,10 +165,10 @@ local function parsechannelsxml(xml)
 					channel.audio = m[1]
 				elseif istag(m, "logo") then
 					-- download logo
-					channel.thumbnail = downloadlogo(channel, m[1])
+					channel.thumbnail = downloadimage(channel, m[1])
 				elseif istag(m, "logo_selected") then
 					-- download selected logo
-					-- channel.thumbnail_selected = downloadlogo(channel, m[1])
+					-- channel.thumbnail_selected = downloadimage(channel, m[1])
 				elseif istag(m, "sources") then
 					channel.streams[1].url = m[1]
 				elseif istag(m, "has_dvr") then
@@ -215,23 +215,21 @@ local function parseprogramsxml(xml, channels)
 		--log.debug(_NAME..": mktime "..timespec.." -> "..formated.." with offset "..offset)
 		return formated
 	end
-	local function downloadlogo(channel, url)
-		local channelid = channel.id
-		if not channelid then
-			return nil
-		end
+	local function downloadimage(channelid, url)
 		local ext = lfs.ext(url)
-		local thumbname = "logo"..ext
+		local thumbname = lfs.basename(url)..ext
 		local dirstatic = config.getstring("epg.bulsat.dir.static")
 		local thumbfile = lfs.concatfilenames(dirstatic, channelid, thumbname)
-		lfs.mkdir(lfs.dirname(thumbfile))
-		log.debug(_NAME..": downloading `"..url.."' to `"..thumbfile.."'")
-		ok, err = dw.download(url, thumbfile)
-		if not ok then
-			logerror(url.."->"..err)
-		else
-			return thumbname
-		end 
+		if not lfs.exists(thumbfile) then
+			lfs.mkdir(lfs.dirname(thumbfile))
+			log.debug(_NAME..": downloading `"..url.."' to `"..thumbfile.."'")
+			ok, err = dw.download(url, thumbfile)
+			if not ok then
+				logerror(url.."->"..err)
+				return nil, err
+			end 
+		end
+		return thumbname
 	end
 	local dom, err = lom.parse(xml)
 	if not dom then
@@ -266,7 +264,7 @@ local function parseprogramsxml(xml, channels)
 					elseif istag(o, "episode-num") then
 						program.episode_num=o[1]
 					elseif istag(o, "image") then
-						-- FIXME: handle program images
+						program.thumbnail = downloadimage(channelid, o.attr.src)
 					elseif istag(o, "audio") then
 						-- FIXME: handle audio tag
 					end
