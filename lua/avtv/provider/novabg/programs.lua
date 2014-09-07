@@ -32,7 +32,8 @@ local function ymdofs(day)
 	return { tonumber(dayofs(day, "%Y")), tonumber(dayofs(day, "%m")), tonumber(dayofs(day, "%d")) }
 end
 
-local function fromtimestamp(ts)
+-- format program date time
+local function formatprogramtime(ts)
 	return os.date("%Y%m%d%H%M%S", tonumber(ts))
 end
 
@@ -98,7 +99,9 @@ channelupdater.novatv = function (channel, sink)
 			prevhour = hour
 
 			-- set program id
-			program.id = fromtimestamp(os.time{year=date[1], month=date[2], day=date[3], hour=hour, min=min})
+			-- since Nova provides time for timezone in BG we substract 2 hours to adjust to greenwich
+			-- also we provide info that DST is in effect since it is also provided by Nova
+			program.id = formatprogramtime(os.time{year=date[1], month=date[2], day=date[3], hour=hour-2, min=min, isdst=true})
 
 			-- set program summary (short description)
 			program.summary = taginfo[1] and tostring(taginfo[1])
