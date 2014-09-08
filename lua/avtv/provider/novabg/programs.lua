@@ -46,6 +46,16 @@ local videos = {
 
 -- updates NovaTV channel
 channelupdater.novatv = function (channel, sink)
+	local function dumpprogram(program)
+		local dmp = {}
+		for i,v in pairs(program) do
+			table.insert(dmp, i.."="..tostring(v))
+		end
+		return table.concat(dmp, "\n")
+	end
+	local function dumpdate(d)
+		return d[1].."-"..d[2].."-"..d[3]
+	end
 	local dirdata = lfs.concatfilenames(config.getstring("dir.data"), "novabg", os.date("%Y%m%d"))
 	local dirstatic = config.getstring("epg.novabg.dir.static")
 	lfs.mkdir(dirdata)
@@ -76,6 +86,8 @@ channelupdater.novatv = function (channel, sink)
 		local taglist = hom{ tag = "li", class = "programme" }
 
 		local prevhour
+		local incday = 0
+		log.debug(_NAME..": Parsing programs for "..dumpdate(date))
 		for _, tagprogramme in ipairs(taglist) do
 			local program = {}
 
@@ -94,14 +106,17 @@ channelupdater.novatv = function (channel, sink)
 			min = tonumber(min)
 			local pday = day
 			if prevhour and prevhour > hour then
-				date = ymdofs(day + 1)
+				incday = incday + 1
+				log.debug(_NAME..": Moving to next day "..(day + incday))
 			end
+			date = ymdofs(day + incday)
 			prevhour = hour
 
 			-- set program id
 			-- since Nova provides time for timezone in BG we substract 2 hours to adjust to greenwich
 			-- also we provide info that DST is in effect since it is also provided by Nova
-			program.id = formatprogramtime(os.time{year=date[1], month=date[2], day=date[3], hour=hour-2, min=min, isdst=true})
+			program.id = formatprogramtime(os.time{year=date[1], month=date[2], day=date[3], hour=hour-3, min=min, isdst=true})
+			log.debug(_NAME..": parsing program "..program.id)
 
 			-- set program summary (short description)
 			program.summary = taginfo[1] and tostring(taginfo[1])
@@ -177,10 +192,16 @@ channelupdater.novatv = function (channel, sink)
 				end
 			end
 
+			if incday > 0 and hour > 6 then
+				break
+			end
+
 			-- sink program
-			log.debug(_NAME..": extracted program "..channel.."/"..program.id)
 			if lastprogram then
 				lastprogram.stop = program.id
+				assert(lastprogram.id < lastprogram.stop, "Stop time can't be lower than start time in program "..dumpprogram(lastprogram))
+				log.debug(_NAME..": extracted program "..channel.."/"..lastprogram.id.."-"..lastprogram.stop.." \""..lastprogram.title.."\"")
+			-- assert(program.id ~= lastprogram.id, "Updating two programs with the same program id is not allowed:\n"..dumpprogram(lastprogram))
 				if not sink(channel, lastprogram) then
 					return nil, "interrupted"
 				end

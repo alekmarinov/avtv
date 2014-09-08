@@ -48,7 +48,7 @@ local epg = {
 local _G, unpack, setmetatable, os =
       _G, unpack, setmetatable, os
 
-local print, pairs, type = print, pairs, type
+local print, pairs, ipairs, type = print, pairs, ipairs, type
 
 module "avtv.command.update"
 
@@ -96,27 +96,49 @@ local function updateprovider(provider)
 
 	log.info(_NAME..": "..table.getn(channelids).." channels inserted in "..provider.." provider")
 
-	local programids = {}
+	local channelprograms = {}
 	local nprograms = 0
 	ok, err = time("epg."..provider..".programs.update", function () 
-		return epg[provider].programs.update(channelids, function (channelid, program) 
+
+		local ok, err = epg[provider].programs.update(channelids, function (channelid, program) 
 			if programsexpire > 0 then
 				program.__expire = programsexpire
 			end
-			_G._rdb.epg[provider][channelid](program)
 			nprograms = nprograms + 1
-			programids[channelid] = programids[channelid] or {__expire = programsexpire}
-			table.insert(programids[channelid], program.id)
+			channelprograms[channelid] = channelprograms[channelid] or {__expire = programsexpire}
+
+			-- check for duplicated program id
+			for i, prg in ipairs(channelprograms[channelid]) do
+				if prg.id == program.id then
+					log.warn(_NAME..": duplicate program id = "..prg.id.." in channel "..provider.."/"..channelid)
+					table.remove(channelprograms[channelid], i)
+					break
+				end
+			end
+			table.insert(channelprograms[channelid], program)
 			return true
 		end)
+
+		log.debug(_NAME..": importing "..nprograms.." programs")
+		for channelid, programs in pairs(channelprograms) do
+			for _, program in ipairs(programs) do
+				_G._rdb.epg[provider][channelid](program)
+			end
+		end
+
+		return ok, err
 	end)
 	if not ok then
 		return nil, err
 	end
 	log.info(_NAME..": "..nprograms.." programs inserted in "..provider.." provider")
-	for channelid, programsid in pairs(programids) do
+	for channelid, programs in pairs(channelprograms) do
 		_G._rdb.epg[provider][channelid].__delete("programs")
-		_G._rdb.epg[provider][channelid].__rpush("programs", programids[channelid])
+		local programsid = {}
+		for _, prg in ipairs(programs) do
+			table.insert(programsid, prg.id)
+		end
+		_G._rdb.epg[provider][channelid].__rpush("programs", programsid)
 	end
 	log.info(_NAME..": updating "..provider.." completed")
 	return true

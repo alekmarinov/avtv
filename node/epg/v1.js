@@ -238,10 +238,28 @@ function programsQuery(res, next, rclient, params, attr, linkinfo)
 			}
 			var json = {meta: ["start"].concat(attr), data: []}
 			var attrcount = attr.length + 1
+			var countissues = 0
+			var countall = 0
 			for (var i = 0; i < programsrows.length / attrcount; i++)
 			{
-				json.data.push(programsrows.slice(i * attrcount, (i + 1) * attrcount))
+				var programinfo = programsrows.slice(i * attrcount, (i + 1) * attrcount)
+				if (i > 0)
+				{
+					var prevprograminfo = programsrows.slice((i-1) * attrcount, i * attrcount)
+					if (programinfo[0] == prevprograminfo[0])
+					{
+						console.warn("Caution! Detected duplicate program starting at " + programinfo[0] + " from " + prefix);
+						console.log(programinfo)
+						countissues++
+					}
+					else
+					{
+						json.data.push(programinfo)
+						countall++
+					}
+				}
 			}
+			console.log(countissues + " issues of " + countall + " programs detected")
 			res.send(json)
 		})
 		return rclient.sort.apply(rclient, args)
