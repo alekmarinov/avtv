@@ -59,6 +59,7 @@ local function handleres(reqtag, res)
 end
 
 local function zapicreate(zapispec)
+	zapispec = lfs.path(zapispec)
 	-- initializes Spore with ZAPI spec
 	Spore.debug = io.stdout
 	log.info(_NAME..": zapicreate.zapispec = "..zapispec)
