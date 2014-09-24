@@ -82,6 +82,9 @@ channelupdater.novatv = function (channel, sink)
 		file, err = io.open(programsfile)
 		htmltext = file:read("*a")
 		file:close()
+
+		-- fix for some html pages incorrectly start with empty space
+		htmltext = string.trimleft(htmltext)
 		local hom = html.parse(htmltext)
 		local taglist = hom{ tag = "li", class = "programme" }
 
@@ -141,6 +144,9 @@ channelupdater.novatv = function (channel, sink)
 					file, err = io.open(detailsfile)
 					htmltext = file:read("*a")
 					file:close()
+
+					-- fix for some html pages incorrectly start with empty space
+					htmltext = string.trimleft(htmltext)
 					hom = html.parse(htmltext)
 
 					local tagdescr = hom{ tag = "div", itemprop="description"}
