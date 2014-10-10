@@ -42,6 +42,11 @@ local epg = {
 	{
 		channels = require "avtv.provider.zattoo.epg",
 		programs = require "avtv.provider.zattoo.epg"
+	},
+	smartxmedia =
+	{
+		channels = require "avtv.provider.smartxmedia.epg",
+		programs = require "avtv.provider.smartxmedia.epg"
 	}
 }
 

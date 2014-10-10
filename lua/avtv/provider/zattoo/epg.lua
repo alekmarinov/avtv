@@ -39,6 +39,7 @@ local function downloadlogo(channelid, url)
 	ok, err = dw.download(url, thumbfile)
 	if not ok then
 		log.warn(_NAME..": "..err)
+		return nil, url.." returns `"..err.."'"
 	else
 		return thumbname
 	end 
@@ -103,7 +104,7 @@ local function loadchannels(zapi, sink)
 	for _, channelinfo in ipairs(res.body.channels) do
 		local thumbnail, err = downloadlogo(channelinfo.cid, channelinfo.logo_84)
 		if not thumbnail then
-			log.error(_NAME..": "..(err or "unknown error"))
+			log.warn(_NAME..": "..(err or "unknown error"))
 		end
 		local channel = {
 			id = channelinfo.cid,
@@ -188,21 +189,25 @@ local function loadprograms(zapi, channelids, sink)
 	return true
 end
 
+local _zapi
+
 -- updates Zattoo channels or programs and call sink callback for each new channel or program extracted
 function update(channelids, sink)
 	local zapispec = "file://"..config.getstring("epg.zattoo.zapi_spore")
-	local zapi = assert(zapicreate(zapispec))
-	assert(zapilogin(zapi))
+	if not _zapi then
+		_zapi = assert(zapicreate(zapispec))
+		assert(zapilogin(_zapi))
+	end
 
 	if not sink then
 		sink = channelids
 		assert(type(sink) == "function", "sink function argument expected")
 		-- sink channels
-		return loadchannels(zapi, sink)
+		return loadchannels(_zapi, sink)
 	else
 		assert(type(sink) == "function", "sink function argument expected")
 		-- sink programs
-		return loadprograms(zapi, channelids, sink)
+		return loadprograms(_zapi, channelids, sink)
 	end
 	return true
 end

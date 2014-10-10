@@ -1,6 +1,6 @@
 {
-   "base_url" : "https://sandbox.zattoo.com",
-   "version" : "2.3",
+   "base_url" : "https://zapi.zattoo.com",
+   "version" : "2.2.3",
    "methods" : {
       "hello" : {
          "optional_params" : [
