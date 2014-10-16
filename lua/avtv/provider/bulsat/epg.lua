@@ -176,6 +176,11 @@ local function parsechannelsxml(xml)
 						log.warn(_NAME..": unexpected has_dvr value `"..(m[1] or "").."' for channel id "..channel.id)
 					end
 					channel.ndvr = tonumber(m[1]) or 0
+				elseif istag(m, "can_record") then
+					if not tonumber(m[1]) then
+						log.warn(_NAME..": unexpected can_record value `"..(m[1] or "").."' for channel id "..channel.id)
+					end
+					channel.recordable = tonumber(m[1]) or 0
 				elseif istag(m, "ndvr") then
 					channel.streams[2].url = m[1]
 				elseif istag(m, "pg") then
