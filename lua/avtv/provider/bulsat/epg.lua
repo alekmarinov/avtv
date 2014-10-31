@@ -16,6 +16,7 @@ local string  = require "lrun.util.string"
 local config  = require "avtv.config"
 local log     = require "avtv.log"
 local logging = require "logging"
+local URL     = require "socket.url"
 
 local io, os, type, assert, ipairs, tostring, tonumber, table =
       io, os, type, assert, ipairs, tostring, tonumber, table
@@ -222,6 +223,7 @@ local function parseprogramsxml(xml, channels)
 	end
 	local function downloadimage(channelid, url)
 		local thumbname = lfs.basename(url)
+		thumbname = URL.unescape(thumbname)
 		local dirstatic = config.getstring("epg.bulsat.dir.static")
 		local thumbfile = lfs.concatfilenames(dirstatic, channelid, thumbname)
 		if not lfs.exists(thumbfile) then

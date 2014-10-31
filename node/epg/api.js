@@ -54,7 +54,7 @@ server.get("/shutdown", function(req, res, next)
 	else
 	{
 		res.send(404);
-   		return next();
+		return next();
 	}
 })
 
