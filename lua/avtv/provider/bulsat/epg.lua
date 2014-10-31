@@ -107,14 +107,19 @@ local function parsechannelsxml(xml)
 	local function istag(tag, name)
 		return type(tag) == "table" and string.lower(tag.tag) == name
 	end
-	local function downloadimage(channel, url)
+	local function downloadimage(channel, url, suffix)
 		local channelid = channel.id
 		if not channelid then
 			log.warn(_NAME..": Can't download the logo of channel without id: "..channeltostring(channel))
 			return nil
 		end
 		local ext = lfs.ext(url)
-		local thumbname = "logo"..ext
+		if suffix then
+			suffix = "_"..suffix
+		else
+			suffix = ""
+		end
+		local thumbname = "logo"..suffix..ext
 		local dirstatic = config.getstring("epg.bulsat.dir.static")
 		local thumbfile = lfs.concatfilenames(dirstatic, channelid, thumbname)
 		lfs.mkdir(lfs.dirname(thumbfile))
@@ -169,7 +174,7 @@ local function parsechannelsxml(xml)
 					channel.thumbnail = downloadimage(channel, m[1])
 				elseif istag(m, "logo_selected") then
 					-- download selected logo
-					-- channel.thumbnail_selected = downloadimage(channel, m[1])
+					channel.thumbnail_selected = downloadimage(channel, m[1], "selected")
 				elseif istag(m, "sources") then
 					channel.streams[1].url = m[1]
 				elseif istag(m, "has_dvr") then
