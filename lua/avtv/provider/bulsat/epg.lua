@@ -23,6 +23,9 @@ local io, os, type, assert, ipairs, tostring, tonumber, table =
 
 local print, pairs = print, pairs
 
+local HOURSECS = 60 * 60
+local DAYSECS = 24 * HOURSECS
+
 module "avtv.provider.bulsat.epg"
 
 local function downloadxml(epgurl)
@@ -206,6 +209,8 @@ local function parsechannelsxml(xml)
 	return channels
 end
 
+local _channels, _programsmap
+
 local function parseprogramsxml(xml, channels)
 	local function istag(tag, name)
 		return type(tag) == "table" and string.lower(tag.tag) == name
@@ -283,10 +288,37 @@ local function parseprogramsxml(xml, channels)
 			end
 		end
 	end
+
+	for _, channel in ipairs(_channels) do
+		local channelid = channel.id
+		programsmap[channelid] = programsmap[channelid] or {}
+		local programs = programsmap[channelid]
+		if #programs == 0 then
+			log.info(_NAME..": Generating fake EPG data for channel "..channelid)
+			local dayspast = config.getnumber("epg.bulsat.dayspast")
+			local daysfuture = config.getnumber("epg.bulsat.daysfuture")
+			local daystotal = daysfuture + dayspast
+			local firstday = os.date("%Y%m%d", os.time() - dayspast * DAYSECS)
+			local datatime = os.time{year=tonumber(string.sub(firstday, 1, 4)),month=tonumber(string.sub(firstday, 5, 6)), day=tonumber(string.sub(firstday, 7, 8)), hour=0, min=0, sec=0}
+			for day = 1, daystotal do
+				for hour = 0, 23 do
+					datatime = datatime + HOURSECS
+					local starttime = os.date("%Y%m%d%H0000", datatime)
+					local stoptime = os.date("%Y%m%d%H0000", datatime + HOURSECS)
+					local program = {
+						id = starttime,
+						stop = stoptime,
+						title = "NO_EPG_DATA",
+						thumbnail = _channels[channelid].thumbnail
+					}
+					table.insert(programs, program)
+				end
+			end
+		end
+	end
 	return programsmap
 end
 
-local _channels, _programsmap
 
 -- updates Bulsat channels or programs and call sink callback for each new channel or program extracted
 function update(channelids, sink)

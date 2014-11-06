@@ -259,7 +259,8 @@ function programsQuery(res, next, rclient, params, attr, linkinfo)
 					}
 				}
 			}
-			console.log(countissues + " issues of " + countall + " programs detected")
+			if (countissues > 0)
+				console.log(countissues + " issues of " + countall + " programs detected")
 			res.send(json)
 		})
 		return rclient.sort.apply(rclient, args)
