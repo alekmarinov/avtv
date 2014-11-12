@@ -178,6 +178,9 @@ local function parsechannelsxml(xml)
 				elseif istag(m, "logo_selected") then
 					-- download selected logo
 					channel.thumbnail_selected = downloadimage(channel, m[1], "selected")
+				elseif istag(m, "logo_favorite") then
+					-- download favorite logo
+					channel.thumbnail_favorite = downloadimage(channel, m[1], "favorite")
 				elseif istag(m, "sources") then
 					channel.streams[1].url = m[1]
 				elseif istag(m, "has_dvr") then
