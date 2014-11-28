@@ -33,7 +33,7 @@ local epg = {
 		channels = require "avtv.provider.bulsat_com.channels",
 		programs = require "avtv.provider.bulsat_com.programs",
 	},
-	bulsatepg =
+	bulsat =
 	{
 		channels = require "avtv.provider.bulsat.epg",
 		programs = require "avtv.provider.bulsat.epg"
