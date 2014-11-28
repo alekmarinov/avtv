@@ -33,7 +33,7 @@ local epg = {
 		channels = require "avtv.provider.bulsat_com.channels",
 		programs = require "avtv.provider.bulsat_com.programs",
 	},
-	bulsat =
+	bulsatepg =
 	{
 		channels = require "avtv.provider.bulsat.epg",
 		programs = require "avtv.provider.bulsat.epg"
@@ -50,6 +50,10 @@ local epg = {
 	}
 }
 
+local vod = {
+	bulsat = require "avtv.provider.bulsat.vod"
+}
+
 local _G, unpack, setmetatable, os =
       _G, unpack, setmetatable, os
 
@@ -63,7 +67,9 @@ _HELP =
 [[
 UPDATE [provider {' ' provider}]
   Update EPG data for the specified providers given as command arguments.
-  Available providers: ]]..table.concat(table.keys(epg, true), ", ")..[[
+  Available EPG providers: ]]..table.concat(table.keys(epg, true), ", ")..[[
+  
+  Available VOD providers: ]]..table.concat(table.keys(vod, true), ", ")..[[
 ]]
 
 local function time(n, f)
@@ -76,75 +82,114 @@ end
 
 local function updateprovider(provider)
 	log.info(_NAME..": updating "..provider)
-	local channelsexpire = config.getnumber("epg.channels.expire")
-	local programsexpire = config.getnumber("epg.programs.expire")
-	local channelids = {__expire = channelsexpire}
-	if not epg[provider] then
-		return nil, "no such EPG provider `"..provider.."'"
+	if not epg[provider] and not vod[provider] then
+		return nil, "no such EPG or VOD provider `"..provider.."'"
 	end
-	local ok, err = time("epg."..provider..".channels.update", function ()
-		return epg[provider].channels.update(function (channel)
-			if channelsexpire > 0 then
-				channel.__expire = channelsexpire
-			end
-			_G._rdb.epg[provider](channel)
-			table.insert(channelids, channel.id)
-			return true
+	local ok, err
+	if epg[provider] then
+		local channelsexpire = config.getnumber("epg.channels.expire")
+		local programsexpire = config.getnumber("epg.programs.expire")
+		local channelids = {__expire = channelsexpire}
+		ok, err = time("epg."..provider..".channels.update", function ()
+			return epg[provider].channels.update(function (channel)
+				if channelsexpire > 0 then
+					channel.__expire = channelsexpire
+				end
+				_G._rdb.epg[provider](channel)
+				table.insert(channelids, channel.id)
+				return true
+			end)
 		end)
-	end)
-	if not ok then
-		return nil, err
-	end
-	-- insert channels to DB
-	_G._rdb.epg[provider].__delete("channels")
-	_G._rdb.epg[provider].__rpush("channels", channelids)
+		if not ok then
+			return nil, err
+		end
+		-- insert channels to DB
+		_G._rdb.epg[provider].__delete("channels")
+		_G._rdb.epg[provider].__rpush("channels", channelids)
 
-	log.info(_NAME..": "..table.getn(channelids).." channels inserted in "..provider.." provider")
+		log.info(_NAME..": "..table.getn(channelids).." channels inserted in "..provider.." provider")
 
-	local channelprograms = {}
-	local nprograms = 0
-	ok, err = time("epg."..provider..".programs.update", function () 
+		local channelprograms = {}
+		local nprograms = 0
+		ok, err = time("epg."..provider..".programs.update", function () 
 
-		local ok, err = epg[provider].programs.update(channelids, function (channelid, program) 
-			if programsexpire > 0 then
-				program.__expire = programsexpire
-			end
-			nprograms = nprograms + 1
-			channelprograms[channelid] = channelprograms[channelid] or {__expire = programsexpire}
+			local ok, err = epg[provider].programs.update(channelids, function (channelid, program) 
+				if programsexpire > 0 then
+					program.__expire = programsexpire
+				end
+				nprograms = nprograms + 1
+				channelprograms[channelid] = channelprograms[channelid] or {__expire = programsexpire}
 
-			-- check for duplicated program id
-			for i, prg in ipairs(channelprograms[channelid]) do
-				if prg.id == program.id then
-					log.warn(_NAME..": duplicate program id = "..prg.id.." in channel "..provider.."/"..channelid)
-					table.remove(channelprograms[channelid], i)
-					break
+				-- check for duplicated program id
+				for i, prg in ipairs(channelprograms[channelid]) do
+					if prg.id == program.id then
+						log.warn(_NAME..": duplicate program id = "..prg.id.." in channel "..provider.."/"..channelid)
+						table.remove(channelprograms[channelid], i)
+						break
+					end
+				end
+				table.insert(channelprograms[channelid], program)
+				return true
+			end)
+
+			log.debug(_NAME..": importing "..nprograms.." programs")
+			for channelid, programs in pairs(channelprograms) do
+				for _, program in ipairs(programs) do
+					_G._rdb.epg[provider][channelid](program)
 				end
 			end
-			table.insert(channelprograms[channelid], program)
+
+			return ok, err
+		end)
+		if not ok then
+			return nil, err
+		end
+		log.info(_NAME..": "..nprograms.." programs inserted in "..provider.." provider")
+		for channelid, programs in pairs(channelprograms) do
+			_G._rdb.epg[provider][channelid].__delete("programs")
+			local programsid = {}
+			for _, prg in ipairs(programs) do
+				table.insert(programsid, prg.id)
+			end
+			_G._rdb.epg[provider][channelid].__rpush("programs", programsid)
+		end
+	end
+
+	if vod[provider] then		
+		local vodexpiregroups = config.getnumber("vod.expire.groups")
+		local vodexpireitems  = config.getnumber("vod.expire.items")
+		local vodgroupids = {__expire = vodexpiregroups}
+
+		ok, err = time("vod."..provider..".update", function ()
+			ok, err = vod[provider].update(function (vodgroup, vodlist)
+				if vodexpiregroups > 0 then
+					vodgroup.__expire = vodexpiregroups
+				end
+				_G._rdb.vod[provider](vodgroup)
+				table.insert(vodgroupids, vodgroup.id)
+				local voditemids = {__expire = vodexpireitems}
+				for _, voditem in ipairs(vodlist) do
+					if vodexpireitems > 0 then
+						voditem.__expire = vodexpireitems
+					end
+					_G._rdb.vod[provider][vodgroup.id](voditem)
+					table.insert(voditemids, voditem.id)
+				end
+				_G._rdb.vod[provider][vodgroup.id].__delete("vods")
+				if #voditemids > 0 then
+					_G._rdb.vod[provider][vodgroup.id].__rpush("vods", voditemids)
+				end
+				return true
+			end)
+			if not ok then
+				return nil, er
+			end
+			_G._rdb.vod[provider].__delete("groups")
+			_G._rdb.vod[provider].__rpush("groups", vodgroupids)
 			return true
 		end)
-
-		log.debug(_NAME..": importing "..nprograms.." programs")
-		for channelid, programs in pairs(channelprograms) do
-			for _, program in ipairs(programs) do
-				_G._rdb.epg[provider][channelid](program)
-			end
-		end
-
-		return ok, err
-	end)
-	if not ok then
-		return nil, err
 	end
-	log.info(_NAME..": "..nprograms.." programs inserted in "..provider.." provider")
-	for channelid, programs in pairs(channelprograms) do
-		_G._rdb.epg[provider][channelid].__delete("programs")
-		local programsid = {}
-		for _, prg in ipairs(programs) do
-			table.insert(programsid, prg.id)
-		end
-		_G._rdb.epg[provider][channelid].__rpush("programs", programsid)
-	end
+
 	log.info(_NAME..": updating "..provider.." completed")
 	return true
 end

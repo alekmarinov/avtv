@@ -292,6 +292,7 @@ local function parseprogramsxml(xml, channels)
 		end
 	end
 
+	local noepgdata = config.getstring("epg.bulsat.no_epg_data")
 	for _, channel in ipairs(_channels) do
 		local channelid = channel.id
 		programsmap[channelid] = programsmap[channelid] or {}
@@ -311,7 +312,7 @@ local function parseprogramsxml(xml, channels)
 					local program = {
 						id = starttime,
 						stop = stoptime,
-						title = "NO_EPG_DATA",
+						title = noepgdata,
 						thumbnail = _channels[channelid].thumbnail
 					}
 					table.insert(programs, program)
