@@ -17,6 +17,7 @@ local config  = require "avtv.config"
 local log     = require "avtv.log"
 local logging = require "logging"
 local URL     = require "socket.url"
+local gzip    = require "luagzip"
 
 local io, os, type, assert, ipairs, tostring, tonumber, math =
       io, os, type, assert, ipairs, tostring, tonumber, math 
