@@ -43,14 +43,37 @@ local function sendlogerrors(errmsg)
 	end
 end
 
-local function downloadxml(vodurl)
-	log.debug(_NAME..": downloading `"..vodurl.."'")
-	local ok, code, headers = dw.download(vodurl)
+local function downloadxml(url)
+	local tmpfile = lfs.concatfilenames(config.getstring("dir.data"), "bulsat", os.date("%Y%m%d"), string.format("tmp_%08x", math.random(99999999)))
+	log.debug(_NAME..": downloading `"..url.."' to `"..tmpfile.."'")
+	lfs.mkdir(lfs.dirname(tmpfile))
+	local ok, code, headers = dw.download(url, tmpfile)
 	if not ok then
 		-- error downloading url
-		return nil, code.." while downloading "..vodurl
+		return nil, code.." while downloading "..url
 	end
-	return ok
+	local xml
+	if headers["content-encoding"] == "gzip" then
+		local gzfile = tmpfile..".gz"
+		lfs.move(tmpfile, gzfile)
+		-- decompressed file
+		log.debug(_NAME..": decompressing `"..gzfile.."' -> `"..tmpfile.."'")
+		local file, err = gzip.open(gzfile)
+		if not file then
+			return nil, err
+		end
+		xml = file:read("*a")
+		file:close()
+	else
+		local file, err = io.open(tmpfile)
+		if not file then
+			return nil, err
+		end
+		xml = file:read("*a")
+		file:close()
+	end
+	lfs.delete(tmpfile)
+	return xml
 end
 
 local function istag(tag, name)
