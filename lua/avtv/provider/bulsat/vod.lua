@@ -18,8 +18,8 @@ local log     = require "avtv.log"
 local logging = require "logging"
 local URL     = require "socket.url"
 
-local io, os, type, assert, ipairs, tostring, tonumber =
-      io, os, type, assert, ipairs, tostring, tonumber 
+local io, os, type, assert, ipairs, tostring, tonumber, math =
+      io, os, type, assert, ipairs, tostring, tonumber, math 
 
 local print, pairs = print, pairs
 
