@@ -18,6 +18,7 @@ local log     = require "avtv.log"
 local logging = require "logging"
 local URL     = require "socket.url"
 local gzip    = require "luagzip"
+local unicode = require "unicode"
 
 local io, os, type, assert, ipairs, tostring, tonumber, table, math =
       io, os, type, assert, ipairs, tostring, tonumber, table, math
@@ -62,10 +63,30 @@ local function downloadxml(url)
 	return xml
 end
 
+-- cyrilic to latin
+local cyr = {"а", "б", "в", "г", "д", "е", "ж", "з", "и", "й", "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ц", "ч", "ш", "щ", "ъ", "ь", "ю", "я",
+"А", "Б", "В", "Г", "Д", "Е", "Ж", "З", "И", "Й", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ь", "Ю", "Я"}
+local lat = {"a", "b", "v", "g", "d", "e", "j", "z", "i", "j", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "h", "c", "c", "s", "t", "u", "_", "u", "a", 
+"A", "B", "V", "G", "D", "E", "J", "Z", "I", "J", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "F", "H", "C", "C", "S", "T", "U", "_", "U", "A"}
+
+for i, c in ipairs(cyr) do
+	cyr[c] = i
+end
+
 local function normchannelid(id)
 	id = tostring(id)
 	id = string.gsub(id, "%.", "_")
-	return id
+
+	local newid = ""
+	for ci = 1, unicode.len(id) do
+		local c = unicode.sub(id, ci, ci)
+		if cyr[c] then
+			newid = newid..lat[cyr[c]]
+		else
+			newid = newid..c
+		end
+	end
+	return newid
 end
 
 --[[
@@ -316,37 +337,100 @@ local function parseprogramsxml(xml, channels)
 		end
 	end
 
+	-- generate fake EPG data
 	local noepgdata = config.getstring("epg.bulsat.no_epg_data")
 	for _, channel in ipairs(_channels) do
 		local channelid = channel.id
 		programsmap[channelid] = programsmap[channelid] or {}
 		local programs = programsmap[channelid]
-		if #programs == 0 then
-			log.info(_NAME..": Generating fake EPG data for channel "..channelid)
-			local dayspast = config.getnumber("epg.bulsat.dayspast")
-			local daysfuture = config.getnumber("epg.bulsat.daysfuture")
-			local daystotal = daysfuture + dayspast
-			local firstday = os.date("%Y%m%d", os.time() - dayspast * DAYSECS)
-			local datatime = os.time{year=tonumber(string.sub(firstday, 1, 4)),month=tonumber(string.sub(firstday, 5, 6)), day=tonumber(string.sub(firstday, 7, 8)), hour=0, min=0, sec=0}
-			for day = 1, daystotal do
-				for hour = 0, 23 do
-					datatime = datatime + HOURSECS
-					local starttime = os.date("%Y%m%d%H0000", datatime)
-					local stoptime = os.date("%Y%m%d%H0000", datatime + HOURSECS)
-					local program = {
-						id = starttime,
-						stop = stoptime,
-						title = noepgdata,
-						thumbnail = _channels[channelid].thumbnail
-					}
-					table.insert(programs, program)
-				end
-			end
+
+		log.info(_NAME..": Generating fake EPG data for channel "..channelid)
+		local dayspast = config.getnumber("epg.bulsat.dayspast")
+		local daysfuture = config.getnumber("epg.bulsat.daysfuture")
+		local daystotal = daysfuture + dayspast
+		local firstday = os.date("%Y%m%d", os.time() - dayspast * DAYSECS)
+		local lastday = os.date("%Y%m%d", os.time() + daysfuture * DAYSECS)
+		local firstdatetime = os.time{year=tonumber(string.sub(firstday, 1, 4)),month=tonumber(string.sub(firstday, 5, 6)), day=tonumber(string.sub(firstday, 7, 8)), hour=0, min=0, sec=0}
+		local lastdatetime = os.time{year=tonumber(string.sub(lastday, 1, 4)),month=tonumber(string.sub(lastday, 5, 6)), day=tonumber(string.sub(lastday, 7, 8)), hour=0, min=0, sec=0}
+		local firstprogramtime = lastdatetime
+		local lastprogramtime = firstdatetime
+
+		-- fill up to the first program
+		local programtime
+		if programs[1] then
+			programtime = programs[1].id
+			firstprogramtime = os.time{year=tonumber(string.sub(programtime, 1, 4)),month=tonumber(string.sub(programtime, 5, 6)), day=tonumber(string.sub(programtime, 7, 8)), hour=0, min=0, sec=0}
+		end
+
+		local stack = {}
+		local datetime = firstdatetime 
+		while datetime + HOURSECS < firstprogramtime do
+			local starttime = os.date("%Y%m%d%H0000", datetime)
+			local stoptime = os.date("%Y%m%d%H0000", datetime + HOURSECS)
+			local program = {
+				id = starttime,
+				stop = stoptime,
+				title = noepgdata,
+				thumbnail = _channels[channelid].thumbnail
+			}
+			table.insert(stack, 1, program)
+
+			datetime = datetime + HOURSECS
+		end
+		if programtime then
+			local starttime = os.date("%Y%m%d%H0000", datetime)
+			local stoptime = programtime
+			local program = {
+				id = starttime,
+				stop = stoptime,
+				title = noepgdata,
+				thumbnail = _channels[channelid].thumbnail
+			}
+			table.insert(stack, program)
+		end
+		for _, prg in ipairs(stack) do
+			table.insert(programs, 1, prg)
+		end
+
+		-- fill up from last program to the end
+		stack = {}
+		local programtime
+		if programs[#programs] then
+			programtime = programs[#programs].stop
+			lastprogramtime = os.time{year=tonumber(string.sub(programtime, 1, 4)),month=tonumber(string.sub(programtime, 5, 6)), day=tonumber(string.sub(programtime, 7, 8)), hour=0, min=0, sec=0}
+		end
+
+		local datetime = lastdatetime 
+		while datetime - HOURSECS > lastprogramtime do
+			local starttime = os.date("%Y%m%d%H0000", datetime)
+			local stoptime = os.date("%Y%m%d%H0000", datetime + HOURSECS)
+			local program = {
+				id = starttime,
+				stop = stoptime,
+				title = noepgdata,
+				thumbnail = _channels[channelid].thumbnail
+			}
+			table.insert(stack, program)
+			datetime = datetime - HOURSECS
+		end
+
+		if programtime then
+			local starttime = programtime
+			local stoptime = os.date("%Y%m%d%H0000", datetime)
+			local program = {
+				id = starttime,
+				stop = stoptime,
+				title = noepgdata,
+				thumbnail = _channels[channelid].thumbnail
+			}
+			table.insert(stack, program)
+		end
+		for _, prg in ipairs(stack) do
+			table.insert(programs, prg)
 		end
 	end
 	return programsmap
 end
-
 
 -- updates Bulsat channels or programs and call sink callback for each new channel or program extracted
 function update(channelids, sink)
