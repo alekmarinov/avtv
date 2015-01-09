@@ -8,10 +8,11 @@
 //                                                                   --
 // -------------------------------------------------------------------- 
 
-var redis = require("redis")
+var redis   = require("redis")
 var restify = require("restify")
-var apiV1 = require("./v1")
-var pkg = require('./package')
+var config  = require('config')
+var apiV1   = require("./v1")
+var pkg     = require('./package')
 
 // snippet taken from http://catapulty.tumblr.com/post/8303749793/heroku-and-node-js-how-to-get-the-client-ip-address
 function getClientIp(req) {
@@ -40,8 +41,10 @@ var server = restify.createServer(
 server.use(restify.gzipResponse())
 server.use(restify.queryParser())
 server.get(/v1\/(.*)/, apiV1(pkg, redis.createClient()))
+
+console.log("static dir = " + config.get('static_dir'))
 server.get(/\/static\/*.*/, restify.serveStatic({
-  directory: './node/epg'
+  directory: config.get('static_dir')
 }))
 server.get("/shutdown", function(req, res, next) 
 {

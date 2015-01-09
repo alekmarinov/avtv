@@ -328,7 +328,7 @@ local function parseprogramsxml(xml, channels)
 					elseif istag(o, "episode-num") then
 						program.episode_num=o[1]
 					elseif istag(o, "image") then
-						program.thumbnail = downloadimage(channelid, o.attr.src)
+						program.image = downloadimage(channelid, o.attr.src)
 					elseif istag(o, "audio") then
 						-- FIXME: handle audio tag
 					end
@@ -370,8 +370,9 @@ local function parseprogramsxml(xml, channels)
 			local program = {
 				id = starttime,
 				stop = stoptime,
-				title = noepgdata,
-				thumbnail = _channels[channelid].thumbnail
+				title = noepgdata
+				-- FIXME: replace with channel image placeholder
+				-- image = _channels[channelid].thumbnail?
 			}
 			table.insert(stack, 1, program)
 
@@ -383,8 +384,9 @@ local function parseprogramsxml(xml, channels)
 			local program = {
 				id = starttime,
 				stop = stoptime,
-				title = noepgdata,
-				thumbnail = _channels[channelid].thumbnail
+				title = noepgdata
+				-- FIXME: replace with channel image placeholder
+				-- image = _channels[channelid].thumbnail?
 			}
 			table.insert(stack, program)
 		end
@@ -407,8 +409,9 @@ local function parseprogramsxml(xml, channels)
 			local program = {
 				id = starttime,
 				stop = stoptime,
-				title = noepgdata,
-				thumbnail = _channels[channelid].thumbnail
+				title = noepgdata
+				-- FIXME: replace with channel image placeholder
+				-- image = _channels[channelid].thumbnail?
 			}
 			table.insert(stack, program)
 			datetime = datetime - HOURSECS
@@ -420,8 +423,9 @@ local function parseprogramsxml(xml, channels)
 			local program = {
 				id = starttime,
 				stop = stoptime,
-				title = noepgdata,
-				thumbnail = _channels[channelid].thumbnail
+				title = noepgdata
+				-- FIXME: replace with channel image placeholder
+				-- image = _channels[channelid].thumbnail?
 			}
 			table.insert(stack, program)
 		end
