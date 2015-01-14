@@ -56,7 +56,7 @@ start() {
  
     # Launch the application
     daemon --user=root \
-      NODE_ENV=production $forever start -p $forever_dir --pidFile $pidfile -m 0 -l $logfile \
+      NODE_CONFIG_DIR=$SOURCE_DIR/config NODE_ENV=production $forever start -p $forever_dir --pidFile $pidfile -m 0 -l $logfile \
       -a -d $SOURCE_DIR
     RETVAL=$?
   else

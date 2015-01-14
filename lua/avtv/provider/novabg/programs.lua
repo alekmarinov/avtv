@@ -172,18 +172,18 @@ channelupdater.novatv = function (channel, sink)
 						local thumbtag = hom{ tag = "meta", itemprop="thumbnail"}
 						local imgsrc = thumbtag[1]("content")
 						if string.starts(imgsrc, "http://") then
-							local thumbfile = lfs.basename(imgsrc)
-							-- set program thumbnail image
-							program.thumbnail = thumbfile
+							local imgfile = lfs.basename(imgsrc)
+							-- set program image
+							program.image = imgfile
 							-- download thumbnail file
-							thumbfile = lfs.concatfilenames(dirstatic, channel, thumbfile)
-							lfs.mkdir(lfs.dirname(thumbfile))
-							if not lfs.exists(thumbfile) then
-								log.debug(_NAME..": downloading `"..imgsrc.."' to `"..thumbfile.."'")
-								ok, code = dw.download(imgsrc, thumbfile)
+							imgfile = lfs.concatfilenames(dirstatic, channel, imgfile)
+							lfs.mkdir(lfs.dirname(imgfile))
+							if not lfs.exists(imgfile) then
+								log.debug(_NAME..": downloading `"..imgsrc.."' to `"..imgfile.."'")
+								ok, code = dw.download(imgsrc, imgfile)
 								if not ok then
-									log.warn(_NAME..": Error downloading thumbnail `"..imgsrc.."'. "..code)
-									program.thumbnail = nil
+									log.warn(_NAME..": Error downloading image `"..imgsrc.."'. "..code)
+									program.image = nil
 								end
 							end
 						end
@@ -194,6 +194,9 @@ channelupdater.novatv = function (channel, sink)
 						if vidurl and string.starts(tostring(vidurl), "http://") then
 							program.video = lfs.basename(vidurl)
 						end
+
+						print(program.image)
+						os.exit()
 					end
 				end
 			end
