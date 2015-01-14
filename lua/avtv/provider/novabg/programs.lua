@@ -194,9 +194,6 @@ channelupdater.novatv = function (channel, sink)
 						if vidurl and string.starts(tostring(vidurl), "http://") then
 							program.video = lfs.basename(vidurl)
 						end
-
-						print(program.image)
-						os.exit()
 					end
 				end
 			end
