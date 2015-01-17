@@ -263,12 +263,15 @@ local function parseprogramsxml(xml, channels)
 	local function istag(tag, name)
 		return type(tag) == "table" and string.lower(tag.tag) == name
 	end
+	local function mktimestamp(timestamp)
+		return os.time{year=tonumber(timestamp:sub(1, 4)), month=tonumber(timestamp:sub(5, 6)), day=tonumber(timestamp:sub(7, 8)), hour=tonumber(timestamp:sub(9, 10)), min=tonumber(timestamp:sub(11, 12)), sec=tonumber(timestamp:sub(13, 14))}
+	end
 	local function mktime(timespec)
 		-- if no need to format date time if comming in GMT
 		-- local formated = timespec:sub(1, 4)..timespec:sub(5, 6)..timespec:sub(7, 8)..timespec:sub(9, 10)..timespec:sub(11, 12)..timespec:sub(13, 14)
 		-- return formated
 
-		local timestamp = os.time{year=tonumber(timespec:sub(1, 4)), month=tonumber(timespec:sub(5, 6)), day=tonumber(timespec:sub(7, 8)), hour=tonumber(timespec:sub(9, 10)), min=tonumber(timespec:sub(11, 12)), sec=tonumber(timespec:sub(13, 14))}
+		local timestamp = mktimestamp(timespec)
 		local mul = 1
 		if timespec:sub(16, 16) == "-" then
 			mul = -1
@@ -300,6 +303,10 @@ local function parseprogramsxml(xml, channels)
 		return nil, err
 	end
 	local programsmap = {}
+	local dayspast = config.getnumber("epg.bulsat.dayspast")
+	local daysfuture = config.getnumber("epg.bulsat.daysfuture")
+	local timestamppast = os.time() - dayspast * DAYSECS
+	local timestampfuture = os.time() + daysfuture * DAYSECS
 	for j, k in ipairs(dom) do
 		if istag(k, "programme") then
 			local program = {
@@ -310,27 +317,29 @@ local function parseprogramsxml(xml, channels)
 			if not channels[channelid] then
 				logerror("missing channel "..channelid.." for program on "..program.id)
 			else
-				programsmap[channelid] = programsmap[channelid] or {}
-				table.insert(programsmap[channelid], program)
+				if mktimestamp(program.id) > timestamppast and mktimestamp(program.stop) < timestampfuture then
+					programsmap[channelid] = programsmap[channelid] or {}
+					table.insert(programsmap[channelid], program)
 
-				for n, o in ipairs(k) do
-					if istag(o, "title") then
-						program.title = o[1]
-					elseif istag(o, "desc") then
-						program.description = o[1]
-					elseif istag(o, "date") then
-						program.date = o[1]
-					elseif istag(o, "language") then
-						program.language = o.attr.lang
-					elseif istag(o, "category") then
-						program.categories = program.categories or {}
-						table.insert(program.categories, o[1])
-					elseif istag(o, "episode-num") then
-						program.episode_num=o[1]
-					elseif istag(o, "image") then
-						program.image = downloadimage(channelid, o.attr.src)
-					elseif istag(o, "audio") then
-						-- FIXME: handle audio tag
+					for n, o in ipairs(k) do
+						if istag(o, "title") then
+							program.title = o[1]
+						elseif istag(o, "desc") then
+							program.description = o[1]
+						elseif istag(o, "date") then
+							program.date = o[1]
+						elseif istag(o, "language") then
+							program.language = o.attr.lang
+						elseif istag(o, "category") then
+							program.categories = program.categories or {}
+							table.insert(program.categories, o[1])
+						elseif istag(o, "episode-num") then
+							program.episode_num=o[1]
+						elseif istag(o, "image") then
+							program.image = downloadimage(channelid, o.attr.src)
+						elseif istag(o, "audio") then
+							-- FIXME: handle audio tag
+						end
 					end
 				end
 			end
@@ -344,9 +353,7 @@ local function parseprogramsxml(xml, channels)
 		programsmap[channelid] = programsmap[channelid] or {}
 		local programs = programsmap[channelid]
 
-		log.info(_NAME..": Generating fake EPG data for channel "..channelid)
-		local dayspast = config.getnumber("epg.bulsat.dayspast")
-		local daysfuture = config.getnumber("epg.bulsat.daysfuture")
+		log.info(_NAME..": Generating fake EPG data for channel "..channelid.." for days since "..dayspast.." up to "..daysfuture)
 		local daystotal = daysfuture + dayspast
 		local firstday = os.date("%Y%m%d", os.time() - dayspast * DAYSECS)
 		local lastday = os.date("%Y%m%d", os.time() + daysfuture * DAYSECS)
