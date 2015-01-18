@@ -56,6 +56,11 @@ local function collectimages(dirstatic, modulename)
 	assert(modulename == MOD_CHANNEL or modulename == MOD_PROGRAM or modulename == MOD_VOD)
 
 	local images = {}
+
+	if not lfs.isdir(dirstatic) then
+		return images
+	end
+
 	if MOD_CHANNEL == modulename or MOD_PROGRAM == modulename then
 		for dirname in lfs.dir(dirstatic, "directory") do
 			local dirpath = lfs.concatfilenames(dirstatic, dirname)
