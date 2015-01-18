@@ -15,6 +15,7 @@ local lfs     = require "lrun.util.lfs"
 local string  = require "lrun.util.string"
 local config  = require "avtv.config"
 local log     = require "avtv.log"
+local images  = require "avtv.images"
 local logging = require "logging"
 local URL     = require "socket.url"
 local gzip    = require "luagzip"
@@ -30,8 +31,16 @@ local DAYSECS = 24 * HOURSECS
 
 module "avtv.provider.bulsat.epg"
 
-local function downloadxml(url)
+local function mktempfile(ext)
 	local tmpfile = lfs.concatfilenames(config.getstring("dir.data"), "bulsat", os.date("%Y%m%d"), string.format("tmp_%08x", math.random(99999999)))
+	if ext then
+		tmpfile = tmpfile..ext
+	end
+	return tmpfile
+end
+
+local function downloadxml(url)
+	local tmpfile = mktempfile()
 	log.debug(_NAME..": downloading `"..url.."' to `"..tmpfile.."'")
 	lfs.mkdir(lfs.dirname(tmpfile))
 	local ok, code, headers = dw.download(url, tmpfile)
@@ -151,10 +160,24 @@ local function channeltostring(channel)
 	return channelinfo
 end
 
+local function downloadtempimage(url)
+	local tmpfile = mktempfile(lfs.ext(url))
+	lfs.mkdir(lfs.dirname(tmpfile))
+	log.debug(_NAME..": downloading `"..url.."' to `"..tmpfile.."'")
+	local ok, err = dw.download(url, tmpfile)
+	if not ok then
+		logerror(url.."->"..err)
+		return nil, err
+	else
+		return tmpfile
+	end 
+end
+
 local function parsechannelsxml(xml)
 	local function istag(tag, name)
 		return type(tag) == "table" and string.lower(tag.tag) == name
 	end
+	--[[
 	local function downloadimage(channel, url, suffix)
 		local channelid = channel.id
 		if not channelid then
@@ -179,6 +202,7 @@ local function parsechannelsxml(xml)
 			return thumbname
 		end 
 	end
+	]]
 	local function checkduplicates(channels, channel)
 		for i, ch in ipairs(channels) do
 			if ch.id == channel.id then
@@ -192,6 +216,7 @@ local function parsechannelsxml(xml)
 	if not dom then
 		return nil, err
 	end
+	local image = images.new("bulsat", images.MOD_CHANNEL)
 	local channels = {}
 	for j, k in ipairs(dom) do
 		if istag(k, "tv") then
@@ -219,13 +244,22 @@ local function parsechannelsxml(xml)
 					channel.audio = m[1]
 				elseif istag(m, "logo") then
 					-- download logo
-					channel.thumbnail = downloadimage(channel, m[1])
+					local imagefile = downloadtempimage(m[1])
+					if imagefile then
+						channel.thumbnail = image:addchannellogo(channel.id, imagefile)
+					end
 				elseif istag(m, "logo_selected") then
 					-- download selected logo
-					channel.thumbnail_selected = downloadimage(channel, m[1], "selected")
+					local imagefile = downloadtempimage(m[1])
+					if imagefile then
+						channel.thumbnail_selected = image:addchannellogo(channel.id, imagefile, images.LOGO_SELECTED)
+					end
 				elseif istag(m, "logo_favorite") then
 					-- download favorite logo
-					channel.thumbnail_favorite = downloadimage(channel, m[1], "favorite")
+					local imagefile = downloadtempimage(m[1])
+					if imagefile then
+						channel.thumbnail_favorite = image:addchannellogo(channel.id, imagefile, images.LOGO_FAVORITE)
+					end
 				elseif istag(m, "sources") then
 					channel.streams[1].url = m[1]
 				elseif istag(m, "has_dvr") then
@@ -254,6 +288,7 @@ local function parsechannelsxml(xml)
 			end
 		end
 	end
+	image:close()
 	return channels
 end
 
@@ -282,6 +317,7 @@ local function parseprogramsxml(xml, channels)
 		--log.debug(_NAME..": mktime "..timespec.." -> "..formated.." with offset "..offset)
 		return formated
 	end
+	--[[
 	local function downloadimage(channelid, url)
 		local thumbname = lfs.basename(url)
 		thumbname = URL.unescape(thumbname)
@@ -298,10 +334,12 @@ local function parseprogramsxml(xml, channels)
 		end
 		return thumbname
 	end
+	]]
 	local dom, err = lom.parse(xml)
 	if not dom then
 		return nil, err
 	end
+	local image = images.new("bulsat", images.MOD_PROGRAM)
 	local programsmap = {}
 	local dayspast = config.getnumber("epg.bulsat.dayspast")
 	local daysfuture = config.getnumber("epg.bulsat.daysfuture")
@@ -336,7 +374,13 @@ local function parseprogramsxml(xml, channels)
 						elseif istag(o, "episode-num") then
 							program.episode_num=o[1]
 						elseif istag(o, "image") then
-							program.image = downloadimage(channelid, o.attr.src)
+							-- program.image = downloadimage(channelid, o.attr.src)
+							local imagefile = downloadtempimage(o.attr.src)
+							if imagefile then
+								local imagename = lfs.basename(o.attr.src)
+								imagename = URL.unescape(imagename)
+								program.image = image:addprogramimage(channelid, imagefile, imagename)
+							end
 						elseif istag(o, "audio") then
 							-- FIXME: handle audio tag
 						end
@@ -345,6 +389,7 @@ local function parseprogramsxml(xml, channels)
 			end
 		end
 	end
+	image:close()
 
 	-- generate fake EPG data
 	local noepgdata = config.getstring("epg.bulsat.no_epg_data")
@@ -443,6 +488,41 @@ local function parseprogramsxml(xml, channels)
 	return programsmap
 end
 
+-- detect image placehoder as the max frequent image name in channel programs
+function channelplaceholders(channels, programsmap)
+	for _, channel in ipairs(channels) do
+		local imagestats = {}
+		for _, program in ipairs(programsmap[channel.id]) do
+			if program.image then
+				imagestats[program.image] = (imagestats[program.image] or 0) + 1
+			end
+		end
+		local imageplaceholder = nil
+		local maxcount = 0
+		for imagename, count in pairs(imagestats) do
+			if count > maxcount then
+				maxcount = count
+				imageplaceholder = imagename
+			end
+		end
+		if maxcount < #programsmap[channel.id] / 2 then
+			-- avoid using placeholder if image frequency is less than the half of all programs
+			imageplaceholder = nil
+		end
+		-- image placehoder detected as thmaximum frequent image name
+		if imageplaceholder then
+			-- set channel program placehoder
+			channel.program_image = imageplaceholder
+			for _, program in ipairs(programsmap[channel.id]) do
+				if program.image == imageplaceholder then
+					-- remove program image if equal to the channel placeholder
+					program.image = nil
+				end
+			end
+		end
+	end
+end
+
 -- updates Bulsat channels or programs and call sink callback for each new channel or program extracted
 function update(channelids, sink)
 	if not _channels then
@@ -472,6 +552,8 @@ function update(channelids, sink)
 			sendlogerrors()
 			return nil, err
 		end
+
+		channelplaceholders(_channels, _programsmap)
 	end
 	if not sink then
 		sink = channelids
