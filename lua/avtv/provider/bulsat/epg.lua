@@ -260,6 +260,12 @@ local function parsechannelsxml(xml)
 					if imagefile then
 						channel.thumbnail_favorite = image:addchannellogo(channel.id, imagefile, images.LOGO_FAVORITE)
 					end
+				elseif istag(m, "logo_epg") then
+					-- download epg logo
+					local imagefile = downloadtempimage(m[1])
+					if imagefile then
+						channel.program_image = image:addchannellogo(channel.id, imagefile, images.PROGRAM_IMAGE)
+					end
 				elseif istag(m, "sources") then
 					channel.streams[1].url = m[1]
 				elseif istag(m, "has_dvr") then
@@ -489,6 +495,7 @@ local function parseprogramsxml(xml, channels)
 end
 
 -- detect image placehoder as the max frequent image name in channel programs
+-- unused
 function channelplaceholders(channels, programsmap)
 	for _, channel in ipairs(channels) do
 		local imagestats = {}
@@ -553,7 +560,7 @@ function update(channelids, sink)
 			return nil, err
 		end
 
-		channelplaceholders(_channels, _programsmap)
+		-- channelplaceholders(_channels, _programsmap)
 	end
 	if not sink then
 		sink = channelids

@@ -27,6 +27,7 @@ MOD_VOD = "vod"
 
 LOGO_SELECTED = "selected"
 LOGO_FAVORITE = "favorite"
+PROGRAM_IMAGE = "program_image"
 
 local function mklogoname(imagefile, modifier)
 	local ext = lfs.ext(imagefile)
@@ -35,12 +36,15 @@ local function mklogoname(imagefile, modifier)
 	else
 		modifier = ""
 	end
+	if modifier == PROGRAM_IMAGE then
+		return "placeholder"..ext
+	end
 	return "logo"..modifier..ext
 end
 
 local function islogoname(imagefile)
 	local imagename = lfs.stripext(lfs.basename(imagefile))
-	return imagename == "logo" or imagename == "logo_"..LOGO_SELECTED or imagename == "logo_"..LOGO_FAVORITE
+	return imagename == "logo" or imagename == "placeholder" or imagename == "logo_"..LOGO_SELECTED or imagename == "logo_"..LOGO_FAVORITE
 end
 
  -- e.g., epg.bulsat.dir.static
@@ -118,7 +122,7 @@ end
 
 -- add new channel logo
 function _M:addchannellogo(channelid, imagepath, modifier)
-	assert(not modifier or modifier == LOGO_SELECTED or modifier == LOGO_FAVORITE)
+	assert(not modifier or modifier == LOGO_SELECTED or modifier == LOGO_FAVORITE or modifier == PROGRAM_IMAGE)
 
 	local imagename = mklogoname(imagepath, modifier)
 	local localpath = lfs.concatfilenames(self.dirstatic, channelid, imagename)

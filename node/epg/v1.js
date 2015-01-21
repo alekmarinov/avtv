@@ -216,6 +216,7 @@ function programsQuery(res, next, rclient, params, attr, linkinfo)
 		var provider = params[0]
 		var channelId = params[1]
 
+		/*
 		if (linkinfo[provider])
 		{
 			var chnlink = linkinfo[provider][channelId]
@@ -226,6 +227,7 @@ function programsQuery(res, next, rclient, params, attr, linkinfo)
 				channelId = chnlink[1]
 			}
 		}
+		*/
 
 		var prefix = 'epg.' + provider + '.' + channelId + '.'
 
@@ -327,8 +329,8 @@ function vodQuery(res, next, rclient, params, attr)
 				return next()
 			})
 			return rclient.sort.apply(rclient, args)
-		// extract all vod items in a group
 		case 2:
+			// extract all vod items in a group
 			var vodgroupid = params[1]
 
 			// all vod items
@@ -360,7 +362,6 @@ function vodQuery(res, next, rclient, params, attr)
 										args.push('get')
 										args.push(vodprefix + '*.' + vodattr[j])
 									}
-									console.log(args)
 									args.push(function (err, vodlist)
 									{
 										vodlist.group = grpid
@@ -377,7 +378,7 @@ function vodQuery(res, next, rclient, params, attr)
 							{
 								return onError(err, res, next)
 							}
-							var json = {meta: ["id"].concat(vodattr).concat("group"), data: []}
+							var json = {meta: ["id"].concat(vodattr).concat("parent"), data: []}
 							for (var vl = 0; vl < vodlists.length; vl++)
 							{
 								var attrcount = vodattr.length + 1
@@ -489,7 +490,7 @@ function apiV1(pkg, rclient)
 			case CMD_CHANNELS:
 				return channelsQuery(res, next, rclient, params, attr)
 			case CMD_PROGRAMS:
-				return programsQuery(res, next, rclient, params, attr, pkg.epg.link)
+				return programsQuery(res, next, rclient, params, attr)
 			case CMD_VOD:
 				return vodQuery(res, next, rclient, params, attr)
 			default:

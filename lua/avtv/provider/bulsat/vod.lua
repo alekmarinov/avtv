@@ -65,6 +65,7 @@ local function downloadxml(url)
 		end
 		xml = file:read("*a")
 		file:close()
+		lfs.delete(gzfile)
 	else
 		local file, err = io.open(tmpfile)
 		if not file then
@@ -72,8 +73,8 @@ local function downloadxml(url)
 		end
 		xml = file:read("*a")
 		file:close()
+		lfs.delete(tmpfile)
 	end
-	lfs.delete(tmpfile)
 	return xml
 end
 
