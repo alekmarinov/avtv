@@ -44,7 +44,7 @@ end
 
 local function islogoname(imagefile)
 	local imagename = lfs.stripext(lfs.basename(imagefile))
-	return imagename == "logo" or imagename == "placeholder" or imagename == "logo_"..LOGO_SELECTED or imagename == "logo_"..LOGO_FAVORITE
+	return imagename == "logo" or imagename == "logo_"..LOGO_SELECTED or imagename == "logo_"..LOGO_FAVORITE or imagename == "logo_"..PROGRAM_IMAGE
 end
 
  -- e.g., epg.bulsat.dir.static
