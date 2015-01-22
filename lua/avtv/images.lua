@@ -102,15 +102,16 @@ local function deleteimages(imageset)
 end
 
 local function deleteemptydirs(dirpath)
-	for dirname in lfs.dir(dirpath) do
+	for dirname in lfs.dir(dirpath, "directory") do
 		local delete = true
-		local dircondidate = lfs.concatfilenames(dirpath, dirname)
-		for trydir in lfs.dir(dircondidate) do
+		local dircandidate = lfs.concatfilenames(dirpath, dirname)
+		for trydir in lfs.dir(dircandidate) do
 			delete = false
 			break
 		end
 		if delete then
-			lfs.delete(dircondidate)
+			log.info(_NAME..": deleting "..dircandidate)
+			lfs.delete(dircandidate)
 		end
 	end
 end
@@ -158,20 +159,36 @@ end
 -- FIXME: handle image resolution
 function _M:addvodimage(vodid, imagepath, resolution)
 	assert(self.modulename == MOD_VOD)
-	local ext = lfs.ext(imagepath)
+	local ext = self.vodext
+	if not ext then
+		ext = lfs.ext(imagepath)
+	end
 	local imagename = vodid..ext
 	local localpath = lfs.concatfilenames(self.dirstatic, resolution, imagename)
 	if self.deleteimageset[localpath] then
 		log.debug(_NAME..": undelete "..localpath)
 		self.deleteimageset[localpath] = nil
 	end
+	local resultname = lfs.concatfilenames(resolution, imagename)
+			
 	log.debug(_NAME..": rename "..imagepath.." to "..localpath)
 	lfs.mkdir(lfs.dirname(localpath))
-	local ok, err = rename(imagepath, localpath) 
-	if not ok then
-		return nil, err
+	local convertexec = config.getstring("tool.convert")
+	local cmd = convertexec.." -thumbnail "..resolution.." \""..imagepath.."\" \""..localpath.."\""
+	if os.execute(cmd) ~= 0 then
+		localpath = lfs.concatfilenames(self.dirstatic, imagename)
+		if self.deleteimageset[localpath] then
+			log.debug(_NAME..": undelete "..localpath)
+			self.deleteimageset[localpath] = nil
+		end
+		resultname = imagename
+		log.warn(_NAME..": "..cmd.." failed, copying "..imagepath.." -> "..localpath)
+		local ok, err = lfs.copy(imagepath, localpath) 
+		if not ok then
+			return nil, err
+		end
 	end
-	return imagename
+	return resultname
 end
 
 -- closes the image manager
@@ -184,12 +201,14 @@ function _M:close()
 end
 
 -- opens the images for specified provider and module ("program", "channel", "vod")
-function new(provider, modulename)
+-- vodext is optional and specifies the outout image format to be converted with ImageMagick
+function new(provider, modulename, vodext)
 	local o = setmetatable({}, {__index = _M})
 	assert(modulename == MOD_CHANNEL or modulename == MOD_PROGRAM or modulename == MOD_VOD)
 
 	o.provider = provider
 	o.modulename = modulename
+	o.vodext = vodext
 	o.dirstatic = getdirstatic(provider, modulename)
 
 	-- collect all existing images

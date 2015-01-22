@@ -15,6 +15,7 @@ local string  = require "lrun.util.string"
 local table   = require "lrun.util.table"
 local config  = require "avtv.config"
 local log     = require "avtv.log"
+local images  = require "avtv.images"
 local logging = require "logging"
 local URL     = require "socket.url"
 local gzip    = require "luagzip"
@@ -51,6 +52,7 @@ local function downloadxml(url)
 	local ok, code, headers = dw.download(url, tmpfile)
 	if not ok then
 		-- error downloading url
+		os.remove(tmpfile)
 		return nil, code.." while downloading "..url
 	end
 	local xml
@@ -131,7 +133,30 @@ local function parsevodgroupsxml(dom, parentgroup, vodgroups)
 	return vodgroups
 end
 
-local function parsevoddetails(dom, vod)
+local function mktempfile(ext)
+	local tmpfile = lfs.concatfilenames(config.getstring("dir.data"), "bulsat", os.date("%Y%m%d"), string.format("tmp_%08x", math.random(99999999)))
+	if ext then
+		tmpfile = tmpfile..ext
+	end
+	return tmpfile
+end
+
+local function downloadtempimage(url)
+	local tmpfile, err = assert(mktempfile(lfs.ext(url)))
+	lfs.mkdir(lfs.dirname(tmpfile))
+	log.debug(_NAME..": downloading `"..url.."' to `"..tmpfile.."'")
+	local ok, err = dw.download(url, tmpfile)
+	if not ok then
+		os.remove(tmpfile)
+		logerror(url.."->"..err)
+		return nil, err
+	else
+		return tmpfile
+	end 
+end
+
+local function parsevoddetails(dom, vod, image)
+	local posterurl
 	for j, k in ipairs(dom) do
 		if istag(k, "id") then
 			vod.id = k[1]
@@ -140,7 +165,7 @@ local function parsevoddetails(dom, vod)
 		elseif istag(k, "title_org") then
 			vod.original_title = k[1]
 		elseif istag(k, "poster") then
-			vod.poster = k[1]
+			posterurl = k[1]
 		elseif istag(k, "short_description") then
 			vod.short_description = k[1]
 		elseif istag(k, "description") then
@@ -212,6 +237,22 @@ local function parsevoddetails(dom, vod)
 			vod.source = k[1]
 		end
 	end
+	-- generate vod item thumbnails
+	if not posterurl then
+		logerror("VOD "..vod.id.." have no poster url")
+		return nil, err
+	end
+	local posterimage = downloadtempimage(posterurl)
+	if not posterimage then
+		return nil, "Can't download vod "..vod.id.." from "..posterurl
+	end
+	local posterformats = string.explode(config.getstring("vod.bulsat.poster.formats"), ",")
+	for _, format in ipairs(posterformats) do
+		local resolution = config.getstring("vod.bulsat.poster."..format)
+		vod["poster_"..format] = image:addvodimage(vod.id, posterimage, resolution)
+	end
+	os.remove(posterimage)
+	return true
 end
 
 -- unused
@@ -232,7 +273,7 @@ local function loadvod(vodid)
 	return vod
 end
 
-local function loadvodgroupdetails(vodgroup, vods, npage)
+local function loadvodgroupdetails(image, vodgroup, vods, npage)
 	local vodurl
 	if not npage then
 		vodurl = string.format(config.getstring("vod.bulsat.url.details"), vodgroup.id) 
@@ -295,8 +336,9 @@ local function loadvodgroupdetails(vodgroup, vods, npage)
 			end
 		elseif istag(k, "vod") then
 			local vod = {}
-			parsevoddetails(k, vod)
-			table.insert(newvods, vod)
+			if parsevoddetails(k, vod, image) then
+				table.insert(newvods, vod)
+			end
 		end
 	end
 	vods = vods or {}
@@ -305,7 +347,7 @@ local function loadvodgroupdetails(vodgroup, vods, npage)
 	end
 	if #newvods > 1 then
 		-- load next page
-		loadvodgroupdetails(vodgroup, vods, (npage or 1) + 1)
+		loadvodgroupdetails(image, vodgroup, vods, (npage or 1) + 1)
 	end
 	return vods
 end
@@ -328,10 +370,13 @@ function update(sink)
 		sendlogerrors(err)
 		return nil, err
 	end
+
+	local image = images.new("bulsat", images.MOD_VOD, ".jpg")
 	for _, vodgroup in ipairs(vodgroups) do
-		local vodlist = loadvodgroupdetails(vodgroup)
+		local vodlist = loadvodgroupdetails(image, vodgroup)
 		sink(vodgroup, vodlist)
 	end
+	image:close()
 	return true
 end
 

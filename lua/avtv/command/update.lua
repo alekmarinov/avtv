@@ -8,9 +8,10 @@
 --                                                                   --
 -----------------------------------------------------------------------
 
-local table    = require "lrun.util.table"
-local log      = require "avtv.log"
-local config   = require "avtv.config"
+local table    = require  "lrun.util.table"
+local string    = require "lrun.util.string"
+local log      = require  "avtv.log"
+local config   = require  "avtv.config"
 
 local epg = {
 	rayv     =
@@ -57,7 +58,7 @@ local vod = {
 local _G, unpack, setmetatable, os =
       _G, unpack, setmetatable, os
 
-local print, pairs, ipairs, type = print, pairs, ipairs, type
+local print, pairs, ipairs, type, assert = print, pairs, ipairs, type, assert
 
 module "avtv.command.update"
 
@@ -65,8 +66,8 @@ _NAME = "update"
 _DESCRIPTION = "Updates EPG database with providers data"
 _HELP =
 [[
-UPDATE [provider {' ' provider}]
-  Update EPG data for the specified providers given as command arguments.
+UPDATE [ [(vod|epg):]provider {' ' [(vod|epg):]provider}]
+  Update EPG/VOD data for the specified providers given as command arguments.
   Available EPG providers: ]]..table.concat(table.keys(epg, true), ", ")..[[
   
   Available VOD providers: ]]..table.concat(table.keys(vod, true), ", ")..[[
@@ -80,13 +81,41 @@ local function time(n, f)
 	return unpack(res)
 end
 
+local function checkprovider(provider, modname)
+	assert(type(provider) == "string")
+	if not modname then
+		if not epg[provider] and not vod[provider] then
+			return nil, "no such EPG or VOD provider `"..provider.."'"
+		end
+	elseif modname == "epg" then
+		if not epg[provider] then
+			return nil, "no such EPG provider `"..provider.."'"
+		end
+	elseif modname == "vod" then
+		if not vod[provider] then
+			return nil, "no such VOD provider `"..provider.."'"
+		end
+	else
+		return nil, "no such module `"..modname.."'"
+	end
+	return true
+end
+
 local function updateprovider(provider)
 	log.info(_NAME..": updating "..provider)
-	if not epg[provider] and not vod[provider] then
-		return nil, "no such EPG or VOD provider `"..provider.."'"
+	local providerparts = string.explode(provider, ":")
+	local modname
+	if #providerparts > 1 then
+		modname = providerparts[1]
+		provider = providerparts[2]
 	end
-	local ok, err
-	if epg[provider] then
+
+	local ok, err = checkprovider(provider, modname)
+	if not ok then
+		return nil, err
+	end
+
+	if not modname or modname == "epg" then
 		local channelsexpire = config.getnumber("epg.channels.expire")
 		local programsexpire = config.getnumber("epg.programs.expire")
 		local channelids = {__expire = channelsexpire}
@@ -155,7 +184,7 @@ local function updateprovider(provider)
 		end
 	end
 
-	if vod[provider] then		
+	if not modname or modname == "vod" then
 		local vodexpiregroups = config.getnumber("vod.expire.groups")
 		local vodexpireitems  = config.getnumber("vod.expire.items")
 		local vodgroupids = {__expire = vodexpiregroups}
