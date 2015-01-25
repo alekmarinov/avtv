@@ -171,11 +171,15 @@ function _M:addvodimage(vodid, imagepath, resolution)
 	end
 	local resultname = lfs.concatfilenames(resolution, imagename)
 			
-	log.debug(_NAME..": rename "..imagepath.." to "..localpath)
+	log.debug(_NAME..": copy "..imagepath.." to "..localpath .. " - " ..lfs.dirname(localpath))
 	lfs.mkdir(lfs.dirname(localpath))
-	local convertexec = config.getstring("tool.convert")
-	local cmd = convertexec.." -thumbnail "..resolution.." \""..imagepath.."\" \""..localpath.."\""
-	if os.execute(cmd) ~= 0 then
+	local imagemagickexec = config.getstring("tool.imagemagick")
+	local cmd = imagemagickexec.." -thumbnail "..resolution.." \""..imagepath.."\" \""..localpath.."\""
+	local rc = os.execute(cmd)
+	if rc ~= 0 then
+		return nil, "Failed to execute "..cmd
+		--[[
+		-- fail back to simple copy
 		localpath = lfs.concatfilenames(self.dirstatic, imagename)
 		if self.deleteimageset[localpath] then
 			log.debug(_NAME..": undelete "..localpath)
@@ -187,6 +191,7 @@ function _M:addvodimage(vodid, imagepath, resolution)
 		if not ok then
 			return nil, err
 		end
+		]]
 	end
 	return resultname
 end

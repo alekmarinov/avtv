@@ -179,13 +179,13 @@ local function parsevoddetails(dom, vod, image)
 		elseif istag(k, "imdb_id") then
 			vod.imdb_id = k[1]
 		elseif istag(k, "rating") then
-			vod.rating = k[1]
+			vod.imdb_rating = k[1]
 		elseif istag(k, "audio_lang") then
 			vod.audio_lang = k[1]
 		elseif istag(k, "subtitles") then
 			vod.subtitles = k[1]
 		elseif istag(k, "trailer_link") then
-			vod.trailer_link = k[1]
+			vod.youtube_trailer_url = k[1]
 		elseif istag(k, "country") then
 			vod.country = k[1]
 		elseif istag(k, "country_id") then
@@ -314,7 +314,7 @@ local function loadvodgroupdetails(image, vodgroup, vods, npage)
 				elseif istag(m, "rating") then
 					group.imdb_rating = m[1] -- 710, for 7.1 IMDB rating
 				elseif istag(m, "trailer_link") then
-					group.trailer_link = m[1]
+					group.youtube_trailer_url = m[1]
 				elseif istag(m, "country") then
 					group.country = m[1]
 				elseif istag(m, "country_id") then
