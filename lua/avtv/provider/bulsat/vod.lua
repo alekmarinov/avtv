@@ -99,6 +99,31 @@ local function printvodgroups(vodgroups)
 	return n
 end
 
+local function normalizecountry(country)
+	if not country then
+		return nil
+	end
+	if string.find(country, ",", 1, true) then
+		local countries = string.explode(country, ",")
+		local formatcountries = {}
+		for _, c in ipairs(countries) do
+			table.insert(formatcountries, string.trim(c))
+		end
+		country = table.concat(formatcountries, ", ")
+	end
+	return country
+end
+
+local function normalizedate(date)
+	if not date then
+		return nil
+	end
+	if string.match(date, "%d%d%d%d%-.-") then
+		date = string.sub(date, 1, 4)
+	end
+	return date
+end
+
 local function parsevodgroupsxml(dom, parentgroup, vodgroups)
 	vodgroups = vodgroups or {}
 	for j, k in ipairs(dom) do
@@ -117,11 +142,11 @@ local function parsevodgroupsxml(dom, parentgroup, vodgroups)
 				elseif istag(m, "short_description") then
 					group.short_description = m[1]
 				elseif istag(m, "release") then
-					group.release = m[1] -- e.g. 2014-01-07
+					group.release = normalizedate(m[1]) -- e.g. 2014-01-07
 				elseif istag(m, "rating") then
 					group.imdb_rating = m[1] -- 710, for 7.1 IMDB rating
 				elseif istag(m, "country") then
-					group.country = m[1]
+					group.country = normalizecountry(m[1])
 				elseif istag(m, "country_id") then
 					group.country_id = m[1]
 				end
@@ -173,7 +198,7 @@ local function parsevoddetails(dom, vod, image)
 		elseif istag(k, "valid_from") then
 			vod.valid_from = k[1]
 		elseif istag(k, "release") then
-			vod.release = k[1]
+			vod.release = normalizedate(k[1])
 		elseif istag(k, "duration") then
 			vod.duration = k[1]
 		elseif istag(k, "imdb_id") then
@@ -187,7 +212,7 @@ local function parsevoddetails(dom, vod, image)
 		elseif istag(k, "trailer_link") then
 			vod.youtube_trailer_url = k[1]
 		elseif istag(k, "country") then
-			vod.country = k[1]
+			vod.country = normalizecountry(k[1])
 		elseif istag(k, "country_id") then
 			vod.country_id = k[1]
 		elseif istag(k, "pg_id") then

@@ -264,7 +264,11 @@ local function parsechannelsxml(xml)
 					-- download epg logo
 					local imagefile = downloadtempimage(m[1])
 					if imagefile then
-						channel.program_image = image:addchannellogo(channel.id, imagefile, images.PROGRAM_IMAGE)
+						local imageformats = string.explode(config.getstring("epg.bulsat.image.formats"), ",")
+						for _, format in ipairs(imageformats) do
+							local resolution = config.getstring("epg.bulsat.image."..format)
+							channel["program_image_"..format] = image:addchannellogo(channel.id, imagefile, images.PROGRAM_IMAGE, resolution)
+						end
 					end
 				elseif istag(m, "sources") then
 					channel.streams[1].url = m[1]
@@ -385,7 +389,12 @@ local function parseprogramsxml(xml, channels)
 							if imagefile then
 								local imagename = lfs.basename(o.attr.src)
 								imagename = URL.unescape(imagename)
-								program.image = image:addprogramimage(channelid, imagefile, imagename)
+
+								local imageformats = string.explode(config.getstring("epg.bulsat.image.formats"), ",")
+								for _, format in ipairs(imageformats) do
+									local resolution = config.getstring("epg.bulsat.image."..format)
+									program["image_"..format] = image:addprogramimage(channelid, imagefile, imagename, resolution)
+								end
 							end
 						elseif istag(o, "audio") then
 							-- FIXME: handle audio tag

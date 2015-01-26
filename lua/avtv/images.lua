@@ -29,17 +29,23 @@ LOGO_SELECTED = "selected"
 LOGO_FAVORITE = "favorite"
 PROGRAM_IMAGE = "program_image"
 
-local function mklogoname(imagefile, modifier)
+local function mklogoname(imagefile, modifier, resolution)
 	local ext = lfs.ext(imagefile)
 	if modifier then
 		modifier = "_"..modifier
 	else
 		modifier = ""
 	end
+	local logoname
 	if modifier == PROGRAM_IMAGE then
-		return "placeholder"..ext
+		logoname = "placeholder"..ext
+	else
+		logoname = "logo"..modifier..ext
 	end
-	return "logo"..modifier..ext
+	if resolution then
+		logoname = lfs.concatfilenames(resolution, logoname)
+	end
+	return logoname
 end
 
 local function islogoname(imagefile)
@@ -122,36 +128,55 @@ local function rename(filename1, filename2)
 end
 
 -- add new channel logo
-function _M:addchannellogo(channelid, imagepath, modifier)
+function _M:addchannellogo(channelid, imagepath, modifier, resolution)
+	assert(type(channelid) == "string")
+	assert(type(imagepath) == "string")
+	assert(not resolution or type(resolution) == "string")
 	assert(not modifier or modifier == LOGO_SELECTED or modifier == LOGO_FAVORITE or modifier == PROGRAM_IMAGE)
 
-	local imagename = mklogoname(imagepath, modifier)
+	local imagename = mklogoname(imagepath, modifier, resolution)
 	local localpath = lfs.concatfilenames(self.dirstatic, channelid, imagename)
 	if self.deleteimageset[localpath] then
 		log.debug(_NAME..": undelete "..localpath)
 		self.deleteimageset[localpath] = nil
 	end
-	log.debug(_NAME..": rename "..imagepath.." to "..localpath)
 	lfs.mkdir(lfs.dirname(localpath))
-	local ok, err = rename(imagepath, localpath) 
-	if not ok then
-		return nil, err
+	if resolution then
+		log.debug(_NAME..": copy "..imagepath.." to "..localpath)
+		local imagemagickexec = config.getstring("tool.imagemagick")
+		local cmd = imagemagickexec.." -thumbnail "..resolution.." \""..imagepath.."\" \""..localpath.."\""
+		local rc = os.execute(cmd)
+		if rc ~= 0 then
+			return nil, "Failed to execute "..cmd
+		end
+	else
+		log.debug(_NAME..": rename "..imagepath.." to "..localpath)
+		local ok, err = rename(imagepath, localpath) 
+		if not ok then
+			return nil, err
+		end
 	end
 	return imagename
 end
 
 -- add new program image
-function _M:addprogramimage(channelid, imagepath, imagename)
-	local localpath = lfs.concatfilenames(self.dirstatic, channelid, imagename)
+function _M:addprogramimage(channelid, imagepath, imagename, resolution)
+	assert(type(channelid) == "string")
+	assert(type(imagepath) == "string")
+	assert(type(imagename) == "string")
+	assert(type(resolution) == "string")
+	local localpath = lfs.concatfilenames(self.dirstatic, channelid, resolution, imagename)
 	if self.deleteimageset[localpath] then
 		log.debug(_NAME..": undelete "..localpath)
 		self.deleteimageset[localpath] = nil
 	end
-	log.debug(_NAME..": rename "..imagepath.." to "..localpath)
+	log.debug(_NAME..": copy "..imagepath.." to "..localpath)
 	lfs.mkdir(lfs.dirname(localpath))
-	local ok, err = rename(imagepath, localpath) 
-	if not ok then
-		return nil, err
+	local imagemagickexec = config.getstring("tool.imagemagick")
+	local cmd = imagemagickexec.." -thumbnail "..resolution.." \""..imagepath.."\" \""..localpath.."\""
+	local rc = os.execute(cmd)
+	if rc ~= 0 then
+		return nil, "Failed to execute "..cmd
 	end
 	return imagename
 end
