@@ -41,8 +41,6 @@ var server = restify.createServer(
 server.use(restify.gzipResponse())
 server.use(restify.queryParser())
 server.get(/v1\/(.*)/, apiV1(pkg, redis.createClient()))
-
-console.log("static dir = " + config.get('static_dir'))
 server.get(/\/static\/*.*/, restify.serveStatic({
   directory: config.get('static_dir')
 }))

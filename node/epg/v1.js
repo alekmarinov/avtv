@@ -8,11 +8,14 @@
 //                                                                   --
 // -------------------------------------------------------------------- 
 
-var async = require("async")
+var async   = require('async')
+var config  = require('config')
+var solr    = require('solr')
 
 var CMD_CHANNELS = "channels"
 var CMD_PROGRAMS = "programs"
 var CMD_VOD = "vod"
+var CMD_SEARCH = "search"
 
 var MAX_LIST_RANGE = 10
 
@@ -446,6 +449,89 @@ function vodQuery(res, next, rclient, params, attr)
 	return rawQuery("vod", res, next, rclient, params)
 }
 
+function searchQueryVOD(res, next, rclient, provider, text, attr)
+{
+	console.log("searchQueryVOD: searching `" + text + "' in " + provider)
+
+	// connect to Solr
+	var slrclient = solr.createClient({host: config.get("solr_host"), port: config.get("solr_port"), path: config.get("vod_solr_path")})
+
+	// query text
+	slrclient.query(text, {rows: config.get("vod_solr_rows")}, function(err, jsonText)
+	{
+		if (err)
+		{
+			console.log(err)
+			return onError(err, res, next)
+		}
+		else
+		{
+			var vodItemsCB = []
+			var resJson = JSON.parse(jsonText)
+			for (var i = 0; i < resJson.response.docs.length; i++)
+			{
+				function cbgen(vodid, grpid)
+				{
+					return function(callback)
+					{
+						var vodprefix = 'vod.' + provider + '.' + grpid + '.' + vodid + '.'
+
+						// use redis mget to extract multiple attributes by a vod item
+						var args = []
+						for (var j = 0; j < attr.length; j++)
+						{
+							args.push(vodprefix + attr[j])
+						}
+						args.push(function (err, voditem)
+						{
+							console.log(voditem)
+							callback(err, [vodid, grpid].concat(voditem))
+						})
+						rclient.mget.apply(rclient, args)
+					}
+				}
+				vodItemsCB.push(cbgen(resJson.response.docs[i].id, resJson.response.docs[i].group_id))
+			}
+			var vodattr = ["id", "parent"].concat(attr)
+			async.series(vodItemsCB, function(err, voditems)
+			{
+				if (err)
+				{
+					return onError(err, res, next)
+				}
+				var json = {meta: vodattr, data: []}
+				for (var vi = 0; vi < voditems.length; vi++)
+				{
+					var attrcount = vodattr.length
+					for (var i = 0; i < voditems[vi].length / attrcount; i++)
+					{
+						var vod = voditems[vi].slice(i * attrcount, (i + 1) * attrcount)
+						json.data.push(vod)
+					}
+				}
+				res.send(json)
+			})
+			return next()
+		}
+	})
+}
+
+function searchQuery(res, next, rclient, params, text, attr)
+{
+	if (params.length < 2)
+	{
+		res.send(403)
+		return next()
+	}
+
+	var module = params[0]
+	if (module == "vod")
+		return searchQueryVOD(res, next, rclient, params[1], text, attr)
+
+	res.send(403)
+	return next()
+}
+
 function apiV1(pkg, rclient)
 {
 	return function respond(req, res, next)
@@ -493,6 +579,10 @@ function apiV1(pkg, rclient)
 				return programsQuery(res, next, rclient, params, attr)
 			case CMD_VOD:
 				return vodQuery(res, next, rclient, params, attr)
+			case CMD_SEARCH:
+				var text = req.query['text']
+				return searchQuery(res, next, rclient, params, text, attr)
+
 			default:
 				res.send(404)
 				next()

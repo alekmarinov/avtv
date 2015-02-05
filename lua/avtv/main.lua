@@ -10,7 +10,6 @@
 
 local config      = require "lrun.util.config"
 local lfs         = require "lrun.util.lfs"
-local redis       = require "lrun.db.redis"
 local log         = require "avtv.log"
 local cmdupdate   = require "avtv.command.update"
 
@@ -147,15 +146,6 @@ function main(...)
 	if not commands[cmdname] then
 		exiterror("Unknown command "..cmdname)
 	end
-
-	-- initialize database
-	local dbdriver = config.get(_conf, "db.driver") 
-	assert(dbdriver == "redis", "Only redis database is supported, but configured with `"..dbdriver.."'")
-
-	_G._rdb = assert(redis.connect{
-	    host = config.get(_conf, "db.redis.hostname"),
-	    port = config.get(_conf, "db.redis.port")
-	})
 
 	ok, err = commands[cmdname](unpack(opts.command))
 	if not ok then

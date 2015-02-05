@@ -8,10 +8,12 @@
 --                                                                   --
 -----------------------------------------------------------------------
 
-local table    = require  "lrun.util.table"
-local string    = require "lrun.util.string"
-local log      = require  "avtv.log"
-local config   = require  "avtv.config"
+local redis    = require "lrun.db.redis"
+local table    = require "lrun.util.table"
+local string   = require "lrun.util.string"
+local log      = require "avtv.log"
+local config   = require "avtv.config"
+local solr     = require "solr"
 
 local epg = {
 	rayv     =
@@ -55,10 +57,11 @@ local vod = {
 	bulsat = require "avtv.provider.bulsat.vod"
 }
 
-local _G, unpack, setmetatable, os =
-      _G, unpack, setmetatable, os
+local _G, unpack, setmetatable, os, pairs, ipairs, type, assert =
+      _G, unpack, setmetatable, os, pairs, ipairs, type, assert
 
-local print, pairs, ipairs, type, assert = print, pairs, ipairs, type, assert
+-- debug
+local print, tostring  = print, tostring
 
 module "avtv.command.update"
 
@@ -101,6 +104,21 @@ local function checkprovider(provider, modname)
 	return true
 end
 
+local function getredisdb()
+	return assert(redis.connect{
+	    host = config.get("db.redis.host"),
+	    port = config.get("db.redis.port")
+	})
+end
+
+local function getsolrdb()
+	return solr.new{
+		host = config.get("db.solr.host"),
+		port = config.get("db.solr.port"),
+		collection = config.get("db.solr.collection")
+	}
+end
+
 local function updateprovider(provider)
 	log.info(_NAME..": updating "..provider)
 	local providerparts = string.explode(provider, ":")
@@ -116,6 +134,7 @@ local function updateprovider(provider)
 	end
 
 	if not modname or modname == "epg" then
+		local rdb = getredisdb()
 		local channelsexpire = config.getnumber("epg.channels.expire")
 		local programsexpire = config.getnumber("epg.programs.expire")
 		local channelids = {__expire = channelsexpire}
@@ -124,7 +143,7 @@ local function updateprovider(provider)
 				if channelsexpire > 0 then
 					channel.__expire = channelsexpire
 				end
-				_G._rdb.epg[provider](channel)
+				rdb.epg[provider](channel)
 				table.insert(channelids, channel.id)
 				return true
 			end)
@@ -133,8 +152,8 @@ local function updateprovider(provider)
 			return nil, err
 		end
 		-- insert channels to DB
-		_G._rdb.epg[provider].__delete("channels")
-		_G._rdb.epg[provider].__rpush("channels", channelids)
+		rdb.epg[provider].__delete("channels")
+		rdb.epg[provider].__rpush("channels", channelids)
 
 		log.info(_NAME..": "..table.getn(channelids).." channels inserted in "..provider.." provider")
 
@@ -164,7 +183,7 @@ local function updateprovider(provider)
 			log.debug(_NAME..": importing "..nprograms.." programs")
 			for channelid, programs in pairs(channelprograms) do
 				for _, program in ipairs(programs) do
-					_G._rdb.epg[provider][channelid](program)
+					rdb.epg[provider][channelid](program)
 				end
 			end
 
@@ -175,46 +194,70 @@ local function updateprovider(provider)
 		end
 		log.info(_NAME..": "..nprograms.." programs inserted in "..provider.." provider")
 		for channelid, programs in pairs(channelprograms) do
-			_G._rdb.epg[provider][channelid].__delete("programs")
+			rdb.epg[provider][channelid].__delete("programs")
 			local programsid = {}
 			for _, prg in ipairs(programs) do
 				table.insert(programsid, prg.id)
 			end
-			_G._rdb.epg[provider][channelid].__rpush("programs", programsid)
+			rdb.epg[provider][channelid].__rpush("programs", programsid)
 		end
+		rdb:disconnect()
 	end
 
 	if not modname or modname == "vod" then
+		local rdb = getredisdb()
+		local slr = getsolrdb()
+
 		local vodexpiregroups = config.getnumber("vod.expire.groups")
 		local vodexpireitems  = config.getnumber("vod.expire.items")
 		local vodgroupids = {__expire = vodexpiregroups}
 
 		ok, err = time("vod."..provider..".update", function ()
-			ok, err = vod[provider].update(function (vodgroup, vodlist)
+			ok, err = vod[provider].update(function (vodgroup, vodlist, searchfields)
+
+				if slr and #vodlist > 0 then
+					-- posting VOD items to Solr
+					local slritems = {}
+					for _, item in ipairs(vodlist) do
+						local newitem = { id = item.id, group_id = vodgroup.id }
+						for _, name in ipairs(searchfields) do
+							local value = item[name]
+							if type(value) == "string" then
+								newitem[name] = value
+							end
+						end
+						table.insert(slritems, newitem)
+					end
+					log.info("Post "..#slritems.." items to solr at "..slr.host..":"..slr.port)
+					slr:post(slritems)
+				end
+
 				if vodexpiregroups > 0 then
 					vodgroup.__expire = vodexpiregroups
 				end
-				_G._rdb.vod[provider](vodgroup)
+				rdb.vod[provider](vodgroup)
 				table.insert(vodgroupids, vodgroup.id)
 				local voditemids = {__expire = vodexpireitems}
 				for _, voditem in ipairs(vodlist) do
 					if vodexpireitems > 0 then
 						voditem.__expire = vodexpireitems
 					end
-					_G._rdb.vod[provider][vodgroup.id](voditem)
+					rdb.vod[provider][vodgroup.id](voditem)
 					table.insert(voditemids, voditem.id)
 				end
-				_G._rdb.vod[provider][vodgroup.id].__delete("vods")
+				rdb.vod[provider][vodgroup.id].__delete("vods")
 				if #voditemids > 0 then
-					_G._rdb.vod[provider][vodgroup.id].__rpush("vods", voditemids)
+					rdb.vod[provider][vodgroup.id].__rpush("vods", voditemids)
 				end
 				return true
 			end)
 			if not ok then
 				return nil, er
 			end
-			_G._rdb.vod[provider].__delete("groups")
-			_G._rdb.vod[provider].__rpush("groups", vodgroupids)
+			-- FIXME: delete unnecessary VOD items from Solr
+
+			rdb.vod[provider].__delete("groups")
+			rdb.vod[provider].__rpush("groups", vodgroupids)
 			return true
 		end)
 	end
@@ -244,3 +287,4 @@ return setmetatable(_M, { __call = function (this, ...)
 		end
 	end
 end})
+

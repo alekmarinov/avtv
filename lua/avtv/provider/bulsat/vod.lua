@@ -225,8 +225,6 @@ local function parsevoddetails(dom, vod, image)
 			vod.genre = k[1]
 		elseif istag(k, "genres_all") then
 			vod.genres_all = k[1]
-		elseif istag(k, "genres_all") then
-			vod.genres_all = k[1]
 		elseif istag(k, "actors") then
 			vod.cast = {}
 			for l, m in ipairs(k) do
@@ -257,6 +255,17 @@ local function parsevoddetails(dom, vod, image)
 						table.insert(vod.cast[castas], actor)
 					end
 				end
+			end
+			for _, actor in ipairs(vod.cast.actor or {}) do
+				if vod.actors then
+					vod.actors = vod.actors..","
+				else
+					vod.actors = ""
+				end
+				vod.actors = vod.actors..actor.name
+			end
+			if vod.cast.director then
+				vod.director = vod.cast.director.name
 			end
 		elseif istag(k, "source") then
 			vod.source = k[1]
@@ -399,7 +408,7 @@ function update(sink)
 	local image = images.new("bulsat", images.MOD_VOD, ".jpg")
 	for _, vodgroup in ipairs(vodgroups) do
 		local vodlist = loadvodgroupdetails(image, vodgroup)
-		sink(vodgroup, vodlist)
+		sink(vodgroup, vodlist, {"title", "description", "short_description", "genre", "country", "actors", "director"})
 	end
 	image:close()
 	return true
