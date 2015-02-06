@@ -9,11 +9,11 @@
 -----------------------------------------------------------------------
 
 local redis    = require "lrun.db.redis"
+local solr     = require "lrun.db.solr"
 local table    = require "lrun.util.table"
 local string   = require "lrun.util.string"
 local log      = require "avtv.log"
 local config   = require "avtv.config"
-local solr     = require "solr"
 
 local epg = {
 	rayv     =

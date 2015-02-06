@@ -474,20 +474,28 @@ function searchQueryVOD(res, next, rclient, provider, text, attr)
 				{
 					return function(callback)
 					{
-						var vodprefix = 'vod.' + provider + '.' + grpid + '.' + vodid + '.'
-
-						// use redis mget to extract multiple attributes by a vod item
-						var args = []
-						for (var j = 0; j < attr.length; j++)
+						if (attr.length == 0)
 						{
-							args.push(vodprefix + attr[j])
+							// no need to fetch any attributes from redis
+							callback(null, [vodid, grpid])
 						}
-						args.push(function (err, voditem)
+						else
 						{
-							console.log(voditem)
-							callback(err, [vodid, grpid].concat(voditem))
-						})
-						rclient.mget.apply(rclient, args)
+							var vodprefix = 'vod.' + provider + '.' + grpid + '.' + vodid + '.'
+
+							// use redis mget to extract multiple attributes by a vod item
+							var args = []
+							for (var j = 0; j < attr.length; j++)
+							{
+								args.push(vodprefix + attr[j])
+							}
+							args.push(function (err, voditem)
+							{
+								console.log(voditem)
+								callback(err, [vodid, grpid].concat(voditem))
+							})
+							rclient.mget.apply(rclient, args)
+						}
 					}
 				}
 				vodItemsCB.push(cbgen(resJson.response.docs[i].id, resJson.response.docs[i].group_id))
