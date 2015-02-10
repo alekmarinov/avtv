@@ -484,6 +484,8 @@ local function parseprogramsxml(xml, channels)
 			datetime = datetime - HOURSECS
 		end
 
+		--[[
+		-- causes invalid program
 		if programtime then
 			local starttime = programtime
 			local stoptime = os.date("%Y%m%d%H0000", datetime)
@@ -496,6 +498,7 @@ local function parseprogramsxml(xml, channels)
 			}
 			table.insert(stack, program)
 		end
+		]]
 		for _, prg in ipairs(stack) do
 			table.insert(programs, prg)
 		end
