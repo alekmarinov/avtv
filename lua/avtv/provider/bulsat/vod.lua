@@ -386,6 +386,23 @@ local function loadvodgroupdetails(image, vodgroup, vods, npage)
 	return vods
 end
 
+
+local function isvodgroupempty(vodgroup, vodgroupsmap)
+	if #vodgroupsmap[vodgroup] > 0 then
+		return false
+	end
+
+	for group, list in pairs(vodgroupsmap) do
+		if group.parent == vodgroup.id then
+			if not isvodgroupempty(group, vodgroupsmap) then
+				return false
+			end
+		end
+	end
+
+	return true
+end
+
 -- updates Bulsat VOD and call sink callback for each new voditem extracted
 function update(sink)
 	local vodurl = config.getstring("vod.bulsat.url.groups")
@@ -406,9 +423,17 @@ function update(sink)
 	end
 
 	local image = images.new("bulsat", images.MOD_VOD, ".jpg")
+	local vodgroupsmap = {}
+	local vodgroupsrefine = {}
 	for _, vodgroup in ipairs(vodgroups) do
-		local vodlist = loadvodgroupdetails(image, vodgroup)
-		sink(vodgroup, vodlist, {"title", "description", "short_description", "genre", "country", "actors", "director"})
+		vodgroupsmap[vodgroup] = loadvodgroupdetails(image, vodgroup)
+		table.insert(vodgroupsrefine, vodgroup)
+	end
+	for _, vodgroup in ipairs(vodgroupsrefine) do
+		if not isvodgroupempty(vodgroup, vodgroupsmap) then
+			local vodlist = vodgroupsmap[vodgroup]
+			sink(vodgroup, vodlist, {"title", "description", "short_description", "genre", "country", "actors", "director"})
+		end
 	end
 	image:close()
 	return true
