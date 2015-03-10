@@ -7,8 +7,8 @@
     <project basedir="." default="build" name="MediaAdviser">
     <property environment="env"/>
     <property name="debuglevel" value="source,lines,vars"/>
-    <property name="target" value="1.7"/>
-    <property name="source" value="1.7"/>
+    <property name="target" value="1.6"/>
+    <property name="source" value="1.6"/>
     <path id="MediaAdviser.classpath">
         <pathelement location="bin"/>
         <pathelement location="lib/commons-pool2-2.0.jar"/>
