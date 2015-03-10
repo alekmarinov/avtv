@@ -16,6 +16,8 @@ var CMD_CHANNELS = "channels"
 var CMD_PROGRAMS = "programs"
 var CMD_VOD = "vod"
 var CMD_SEARCH = "search"
+var CMD_RECOMMEND = "recommend"
+var CMD_RATE = "rate"
 
 var MAX_LIST_RANGE = 10
 
@@ -540,6 +542,70 @@ function searchQuery(res, next, rclient, params, text, attr)
 	return next()
 }
 
+function ratePost(res, next, rclient, params, rating)
+{
+
+	if (params.length < 4)
+	{
+		res.send(403)
+		return next()
+	}
+
+	var key = 'rating' +'.' + params[0] +'.' + params[1] + '.' + params[2] + ','+ params[3]
+	rclient.set(key, rating, function (err) 
+	{
+		if(err)	
+		{			
+			console.log(err)
+			return onError(err, res, next)
+		}		
+		else 
+		{
+			var json = {status: 'success'}
+			res.send(json)
+		}	
+		next()
+   
+	})
+	
+}
+
+function recommendQuery(res, next, rclient, params, max)
+{
+
+	if (params.length < 3)
+	{
+		res.send(403)
+		return next()
+	}
+   
+    var key = 'recommend' +'.' + params[0] + '.' + params[1] + '.' + params[2]	
+	rclient.lrange(key, 0, -1, function(err, reply) 
+	{		
+		if(err) 
+		{
+			console.log(err)
+			return onError(err, res, next)
+		}
+		else 
+		{	
+            if (reply.length > 0) 
+            {			
+				reply = reply.slice(0, Math.min(max,reply.length))
+				res.json(reply)					
+			} 
+			else 
+			{
+				res.send(404)
+
+			}	
+			next()
+
+		}		    
+	})	
+}
+
+
 function apiV1(pkg, rclient)
 {
 	return function respond(req, res, next)
@@ -590,7 +656,12 @@ function apiV1(pkg, rclient)
 			case CMD_SEARCH:
 				var text = req.query['text']
 				return searchQuery(res, next, rclient, params, text, attr)
-
+			case CMD_RECOMMEND:
+				var max = req.query['max']
+				return recommendQuery(res, next, rclient, params, max)
+			case CMD_RATE:		
+			    var rating = req.params.rating;			    	
+				return ratePost(res, next, rclient, params, rating)
 			default:
 				res.send(404)
 				next()

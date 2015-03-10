@@ -37,10 +37,12 @@ var server = restify.createServer(
 {
 	name: 'AVTV',
 })
-
+server.use(restify.bodyParser())
 server.use(restify.gzipResponse())
 server.use(restify.queryParser())
-server.get(/v1\/(.*)/, apiV1(pkg, redis.createClient()))
+var apiv1 = apiV1(pkg, redis.createClient())
+server.get(/v1\/(.*)/,apiv1)
+server.post(/v1\/(.*)/, apiv1);
 server.get(/\/static\/*.*/, restify.serveStatic({
   directory: config.get('static_dir')
 }))
