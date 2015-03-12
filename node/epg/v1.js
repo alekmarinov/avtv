@@ -463,7 +463,6 @@ function searchQueryVOD(res, next, rclient, provider, text, attr)
 	{
 		if (err)
 		{
-			console.log(err)
 			return onError(err, res, next)
 		}
 		else
@@ -570,7 +569,6 @@ function rateQuery(res, next, rclient, params)
 
 function ratePost(res, next, rclient, params, rating)
 {
-
 	if (params.length < 4)
 	{
 		res.send(403)
@@ -582,7 +580,6 @@ function ratePost(res, next, rclient, params, rating)
 	{
 		if(err)	
 		{			
-			console.log(err)
 			return onError(err, res, next)
 		}		
 		else 
@@ -591,44 +588,29 @@ function ratePost(res, next, rclient, params, rating)
 			res.send(json)
 		}	
 		next()
-   
-	})
-	
+   	})
 }
 
 function recommendQuery(res, next, rclient, params, max)
 {
-
 	if (params.length < 3)
 	{
 		res.send(403)
 		return next()
 	}
-   
-    var key = 'recommend' +'.' + params[0] + '.' + params[1] + '.' + params[2]	
-	rclient.lrange(key, 0, -1, function(err, reply) 
-	{		
-		if(err) 
+    var key = 'recommend' +'.' + params[0] + '.' + params[1] + '.' + params[2]
+	rclient.lrange(key, 0, max - 1, function(err, reply)
+	{
+		if (err)
 		{
-			console.log(err)
 			return onError(err, res, next)
 		}
-		else 
-		{	
-            if (reply.length > 0) 
-            {			
-				reply = reply.slice(0, Math.min(max,reply.length))
-				res.json(reply)					
-			} 
-			else 
-			{
-				res.send(404)
-
-			}	
+		else
+		{
+			res.json(reply)
 			next()
-
-		}		    
-	})	
+		}
+	})
 }
 
 
