@@ -542,6 +542,32 @@ function searchQuery(res, next, rclient, params, text, attr)
 	return next()
 }
 
+function rateQuery(res, next, rclient, params)
+{
+	if (params.length < 4)
+	{
+		res.send(403)
+		return next()
+	}
+	var key = 'rating' +'.' + params[0] +'.' + params[1] + '.' + params[2] + ','+ params[3]
+	rclient.get(key, function (err,result) 
+	{
+		if(err)	
+		{			
+			console.log(err)
+			return onError(err, res, next)
+		}		
+		else 
+		{
+			
+			var json = {rating: result}
+			res.send(json)
+		}	
+		next()
+   
+	})
+}
+
 function ratePost(res, next, rclient, params, rating)
 {
 
@@ -610,6 +636,7 @@ function apiV1(pkg, rclient)
 {
 	return function respond(req, res, next)
 	{
+		
 		var params = req.params[0]
 
 		// notify http client with the character encoding type
@@ -643,8 +670,7 @@ function apiV1(pkg, rclient)
 		if (attr !== undefined)
 			attr = attr.split(',')
 		else
-			attr = []
-
+			attr = []	
 		switch (cmd)
 		{
 			case CMD_CHANNELS:
@@ -659,9 +685,20 @@ function apiV1(pkg, rclient)
 			case CMD_RECOMMEND:
 				var max = req.query['max']
 				return recommendQuery(res, next, rclient, params, max)
-			case CMD_RATE:		
-			    var rating = req.params.rating;			    	
-				return ratePost(res, next, rclient, params, rating)
+			case CMD_RATE:
+
+			    switch (req.method)	
+			    {
+				    case 'POST':
+				    {	
+					    var rating = req.params.rating;			    	
+						return ratePost(res, next, rclient, params, rating)						
+					}
+					case 'GET':
+					{
+						return rateQuery(res, next, rclient, params)					
+					}
+				}
 			default:
 				res.send(404)
 				next()
