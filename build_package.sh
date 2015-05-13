@@ -1,7 +1,7 @@
 #!/bin/sh
 ######################################################################
 ##
-## Copyright (C) 2003-2014, AVIQ Bulgaria Ltd
+## Copyright (C) 2003-2015, Intelibo Ltd
 ##
 ## Project:       AVTV
 ## Filename:      build_package.sh
