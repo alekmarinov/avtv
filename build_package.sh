@@ -57,4 +57,4 @@ AVTV_VERSION=$(app_version $ROOT_DIR)
 sed -i "s/_VERSION =.*/_VERSION = \"$AVTV_VERSION\";/" $VERSION_FILE lua/avtv/main.lua
 ZIP_PACKAGE=avtv-$AVTV_VERSION.zip
 echo "Zipping to $TARGET_DIR/$ZIP_PACKAGE"
-zip -r $TARGET_DIR/$ZIP_PACKAGE avtv etc lua node
+zip -r $TARGET_DIR/$ZIP_PACKAGE avtv etc lua node java/MediaAdviser.jar -x node/epg/static/**\*
