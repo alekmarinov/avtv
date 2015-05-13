@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project>
+	<property environment="env" />
+	<property name="debuglevel" value="source,lines,vars" />
+	<property name="target" value="1.7" />
+	<property name="source" value="1.7" />
+	<path id="MediaAdviser.classpath">
+		<pathelement location="bin" />
+		<pathelement location="lib/commons-pool2-2.0.jar" />
+		<pathelement location="lib/jedis-2.4.2.jar" />
+		<pathelement location="lib/mahout-core-0.8-job.jar" />
+		<pathelement location="lib/mahout-core-0.8.jar" />
+		<pathelement location="lib/mahout-integration-0.8.jar" />
+		<pathelement location="lib/mahout-math-0.8.jar" />
+	</path>
+	<target name="init">
+		<mkdir dir="bin" />
+		<copy includeemptydirs="false" todir="bin">
+			<fileset dir="src">
+				<exclude name="**/*.ucls" />
+				<exclude name="**/*.useq" />
+				<exclude name="**/*.java" />
+			</fileset>
+		</copy>
+	</target>
+	<target name="clean">
+		<delete dir="bin" />
+		<delete file="MediaAdviser.jar" />
+	</target>
+	<target depends="clean" name="cleanall" />
+	<target depends="init" name="build">
+		<echo message="${ant.project.name}: ${ant.file}" />
+		<javac debug="true" debuglevel="${debuglevel}" destdir="bin" includeantruntime="false" source="${source}" target="${target}">
+			<src path="src" />
+			<classpath refid="MediaAdviser.classpath" />
+		</javac>
+	</target>
+	<target depends="build" name="jar">
+		<jar destfile="MediaAdviser.jar" basedir="bin">
+			<manifest>
+				<attribute name="Main-Class" value="intelibo.avtv.recommender.MediaAdviser" />
+			</manifest>
+			<zipgroupfileset dir="lib" includes="*.jar"/>
+		</jar>
+	</target>
+</project>
