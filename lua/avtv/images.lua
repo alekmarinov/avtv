@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------
 --                                                                   --
--- Copyright (C) 2007-2015,  AVIQ Bulgaria Ltd                       --
+-- Copyright (C) 2007-2015,  Intelibo Ltd                            --
 --                                                                   --
 -- Project:       AVTV                                               --
 -- Filename:      images.lua                                         --
@@ -13,9 +13,10 @@ local lfs      = require "lrun.util.lfs"
 local string   = require "lrun.util.string"
 local log      = require "avtv.log"
 local config   = require "avtv.config"
+local base64   = require "base64"
 
-local setmetatable, os =
-      setmetatable, os
+local setmetatable, os, io =
+      setmetatable, os, io
 
 local print, pairs, type, assert = print, pairs, type, assert
 
@@ -156,7 +157,14 @@ function _M:addchannellogo(channelid, imagepath, modifier, resolution)
 			return nil, err
 		end
 	end
-	return imagename
+	-- encode to base64
+	local file, err = io.open(localpath, "rb")
+	if not file then
+		return nil, err
+	end
+	local base64encoded = base64.encode(file:read("*a"))
+	file:close()
+	return imagename, base64encoded
 end
 
 -- add new program image
@@ -178,7 +186,14 @@ function _M:addprogramimage(channelid, imagepath, imagename, resolution)
 	if rc ~= 0 then
 		return nil, "Failed to execute "..cmd
 	end
-	return imagename
+	-- encode to base64
+	local file, err = io.open(localpath, "rb")
+	if not file then
+		return nil, err
+	end
+	local base64encoded = base64.encode(file:read("*a"))
+	file:close()
+	return imagename, base64encoded
 end
 
 -- FIXME: handle image resolution

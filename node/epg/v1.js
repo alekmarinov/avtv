@@ -206,33 +206,146 @@ function channelsQuery(res, next, rclient, params, attr)
 	}
 }
 
-function programsQuery(res, next, rclient, params, attr, linkinfo)
+function programsByTime(res, next, rclient, provider, channelId, when, offset, count, attr)
 {
-	if (params.length < 2)
+	var luaGetPrograms =
+		"local provider, channel, when, offset, count, attrindex\n" +
+		"for arg = 1, #ARGV, 2 do\n" +
+		"  if ARGV[arg] == 'provider' then\n" +
+		"    provider = ARGV[arg + 1]\n" +
+		"  elseif ARGV[arg] == 'channel' then\n" +
+		"    channel = ARGV[arg + 1]\n" +
+		"  elseif ARGV[arg] == 'when' then\n" +
+		"    when = tonumber(ARGV[arg + 1])\n" +
+		"  elseif ARGV[arg] == 'offset' then\n" +
+		"    offset = tonumber(ARGV[arg + 1])\n" +
+		"  elseif ARGV[arg] == 'count' then\n" +
+		"    count = tonumber(ARGV[arg + 1])\n" +
+		"  elseif ARGV[arg] == 'attr' then\n" +
+		"    attrindex = arg + 1\n" +
+		"  end\n" +
+		"end\n" +
+		"offset = offset or 0\n" +
+		"count = count or 1\n" +
+		"local channels\n" +
+		"if channel then\n" +
+		"  channels = {channel}\n" +
+		"else\n" +
+		"  channels = redis.call('lrange', 'epg.'..provider..'.channels', 0, -1)\n" +
+		"end\n" +
+		"local index\n" +
+		"local programs = {}\n" +
+		"for index = 1, #channels do\n" +
+		"  local channel = channels[index]\n" +
+		"  local starts = redis.call('sort', 'epg.'..provider..'.'..channel..'.programs')\n" +
+		"  for i = 1, #starts - 1 do\n" +
+		"    local start = tonumber(starts[i])\n" +
+		"    local stop = tonumber(starts[i+1])\n" +
+		"    if not when or (when >= start and when < stop) then\n" +
+		"      local jfrom, jto = i, i\n" +
+		"      if when then\n" +
+		"        jfrom, jto = i + offset, i + offset + count - 1\n" +
+		"      end\n" +
+		"      if jfrom < 0 then jfrom = 0 end\n" +
+		"      if jto > #starts then jto = #starts end\n" +
+		"      for j = jfrom, jto do\n" +
+		"        if j > 0 and j < #starts then\n" +
+		"          local mgetattr = {}\n" +
+		"          for a = attrindex, #ARGV do\n" +
+		"            table.insert(mgetattr, 'epg.'..provider..'.'..channel..'.'..starts[j]..'.'..ARGV[a])\n" +
+		"          end\n" +
+		"          local program = redis.call('mget', unpack(mgetattr))\n" +
+		"          table.insert(program, 1, starts[j + 1])\n" +
+		"          table.insert(program, 1, starts[j])\n" +
+		"          table.insert(program, 1, channel)\n" +
+		"          table.insert(programs, program)\n" +
+		"        end\n" +
+		"      end\n" +
+		"    end\n" +
+		"  end\n" + 
+		"end\n" + 
+		"return programs\n";
+	var args = [luaGetPrograms, 0, "provider", provider]
+	if (channelId !== undefined)
+	{
+		args.push("channel")
+		args.push(channelId)
+	}
+	if (when !== undefined)
+	{
+		args.push("when")
+		args.push(when)
+	}
+	if (offset !== undefined)
+	{
+		args.push("offset")
+		args.push(offset)
+	}
+	if (count !== undefined)
+	{
+		args.push("count")
+		args.push(count)
+	}
+	args.push("attr")
+	args = args.concat(attr)
+	args.push(function onProgramsResult(err, programs){
+			if (err)
+			{
+				return onError(err, res, next)
+			}
+			var json = {meta: ["channelid", "start", "stop"].concat(attr), data: []}
+			var attrcount = attr.length + 2
+			var countissues = 0
+			var countall = 0
+			for (var i = 0; i < programs.length; i++)
+			{
+				var programdata = programs[i]
+				if (i > 0)
+				{
+					var prevprogramstart = programs[i-1][1]
+					if (programdata[1] == prevprogramstart)
+					{
+						console.warn("Caution! Detected duplicate program starting at " + programdata[1] + " for channel " + programdata[0]);
+						console.log(programdata)
+						countissues++
+						continue
+					}
+				}
+				
+				json.data.push(programdata)
+				countall++
+			}
+			if (countissues > 0)
+				console.log(countissues + " issues of " + countall + " programs detected")
+			res.send(json)
+		})
+	rclient.eval.apply(rclient, args)
+}
+
+function programsQuery(res, next, rclient, params, attr, query)
+{
+	if (params.length < 1)
 	{
 		res.send(403)
 		next()
 		return false
 	}
+	// extract provider
+	var provider = params[0]
 
-	if (params.length === 2)
+	var when = query['when']
+	var offset = query['offset'] || 0
+	var count = query['count'] || 1
+
+	if (params.length === 1)
 	{
-		// extract provider and channelId
-		var provider = params[0]
+		return programsByTime(res, next, rclient, provider, undefined, when, offset, count, ["title"].concat(attr));
+	}
+	else if (params.length === 2)
+	{
 		var channelId = params[1]
-
-		/*
-		if (linkinfo[provider])
-		{
-			var chnlink = linkinfo[provider][channelId]
-			if (chnlink)
-			{
-				console.log("Linking " + provider + "/" + channelId + " to " + chnlink[0] + "/" + chnlink[1])
-				provider = chnlink[0]
-				channelId = chnlink[1]
-			}
-		}
-		*/
+		if (when)
+			return programsByTime(res, next, rclient, provider, channelId, when, offset, count, ["title"].concat(attr));
 
 		var prefix = 'epg.' + provider + '.' + channelId + '.'
 
@@ -587,7 +700,6 @@ function recommendQuery(res, next, rclient, params, max)
 	})
 }
 
-
 function apiV1(pkg, rclient)
 {
 	return function respond(req, res, next)
@@ -632,7 +744,7 @@ function apiV1(pkg, rclient)
 			case CMD_CHANNELS:
 				return channelsQuery(res, next, rclient, params, attr)
 			case CMD_PROGRAMS:
-				return programsQuery(res, next, rclient, params, attr)
+				return programsQuery(res, next, rclient, params, attr, req.query)
 			case CMD_VOD:
 				return vodQuery(res, next, rclient, params, attr)
 			case CMD_SEARCH:

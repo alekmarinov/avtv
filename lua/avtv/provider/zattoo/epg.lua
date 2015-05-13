@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------
 --                                                                   --
--- Copyright (C) 2007-2014,  AVIQ Bulgaria Ltd.                      --
+-- Copyright (C) 2007-2015,  Intelibo Ltd                            --
 --                                                                   --
 -- Project:       AVTV                                               --
 -- Filename:      epg.lua                                            --
@@ -85,11 +85,18 @@ local function zapicreate(zapispec)
 	return zapi
 end
 
+function unquote(str)
+	return string.gsub(str,"^([\"\'])(.*)%1$","%2")
+end
+
 local function zapilogin(zapi)
 	-- ZAPI login
+	local user, pass = config.getstring("epg.zattoo.username"), config.getstring("epg.zattoo.password")
+	user = unquote(user)
+	pass = unquote(pass)
 	res = zapi:login{
-		login = config.getstring("epg.zattoo.username"),
-		password = config.get("epg.zattoo.password")
+		login = user,
+		password = pass
 	}
 	return handleres("login", res)
 end

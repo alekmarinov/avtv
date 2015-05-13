@@ -1,0 +1,17 @@
+[Unit]
+Description=A gateway of EPG and VOD services
+After=redis.target
+
+[Service]
+Environment=NODE_ENV=production NODE_CONFIG_DIR=/usr/local/avtv/node/epg/config
+ExecStart=/usr/bin/node /usr/local/avtv/node/epg
+ExecStop=/usr/bin/curl http://127.0.0.1:9090/shutdown
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=avtv
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

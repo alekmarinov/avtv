@@ -1,10 +1,10 @@
 -----------------------------------------------------------------------
 --                                                                   --
--- Copyright (C) 2007-2013,  AVIQ Bulgaria Ltd.                      --
+-- Copyright (C) 2007-2015,  Intelibo Ltd                            --
 --                                                                   --
 -- Project:       AVTV                                               --
 -- Filename:      channels.lua                                       --
--- Description:   Wilmaa channels provider                             --
+-- Description:   Wilmaa channels provider                           --
 --                                                                   --
 -----------------------------------------------------------------------
 

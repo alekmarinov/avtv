@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------
 --                                                                   --
--- Copyright (C) 2007-2013,  AVIQ Bulgaria Ltd                       --
+-- Copyright (C) 2007-2015,  Intelibo Ltd                            --
 --                                                                   --
 -- Project:       AVTV                                               --
 -- Filename:      main.lua                                           --
@@ -19,7 +19,7 @@ _NAME = "AVTV"
 _VERSION = "0.1"
 _DESCRIPTION = "Support tool for EPG maintenance"
 
-local appwelcome = _NAME.." ".._VERSION.." Copyright (C) 2007-2013,  AVIQ Bulgaria Ltd"
+local appwelcome = _NAME.." ".._VERSION.." Copyright (C) 2007-2015,  Intelibo Ltd"
 local usagetext = "Usage: ".._NAME:lower().." [OPTION]... COMMAND [ARGS]..."
 local usagetexthelp = "Try ".._NAME:lower().." --help' for more options."
 local errortext = _NAME:lower()..": %s"

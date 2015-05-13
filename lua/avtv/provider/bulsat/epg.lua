@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------
 --                                                                   --
--- Copyright (C) 2007-2014,  AVIQ Bulgaria Ltd.                      --
+-- Copyright (C) 2007-2015,  Intelibo Ltd                            --
 --                                                                   --
 -- Project:       AVTV                                               --
 -- Filename:      epg.lua                                            --
@@ -85,6 +85,7 @@ end
 local function normchannelid(id)
 	id = tostring(id)
 	id = string.gsub(id, "%.", "_")
+	id = string.gsub(id, " ", "_")
 
 	local newid = ""
 	for ci = 1, unicode.len(id) do
@@ -246,19 +247,19 @@ local function parsechannelsxml(xml)
 					-- download logo
 					local imagefile = downloadtempimage(m[1])
 					if imagefile then
-						channel.thumbnail = image:addchannellogo(channel.id, imagefile)
+						channel.thumbnail, channel.thumbnail_base64 = image:addchannellogo(channel.id, imagefile)
 					end
 				elseif istag(m, "logo_selected") then
 					-- download selected logo
 					local imagefile = downloadtempimage(m[1])
 					if imagefile then
-						channel.thumbnail_selected = image:addchannellogo(channel.id, imagefile, images.LOGO_SELECTED)
+						channel.thumbnail_selected, channel.thumbnail_selected_base64 = image:addchannellogo(channel.id, imagefile, images.LOGO_SELECTED)
 					end
 				elseif istag(m, "logo_favorite") then
 					-- download favorite logo
 					local imagefile = downloadtempimage(m[1])
 					if imagefile then
-						channel.thumbnail_favorite = image:addchannellogo(channel.id, imagefile, images.LOGO_FAVORITE)
+						channel.thumbnail_favorite, channel.thumbnail_favorite_base64 = image:addchannellogo(channel.id, imagefile, images.LOGO_FAVORITE)
 					end
 				elseif istag(m, "logo_epg") then
 					-- download epg logo
@@ -267,7 +268,7 @@ local function parsechannelsxml(xml)
 						local imageformats = string.explode(config.getstring("epg.bulsat.image.formats"), ",")
 						for _, format in ipairs(imageformats) do
 							local resolution = config.getstring("epg.bulsat.image."..format)
-							channel["program_image_"..format] = image:addchannellogo(channel.id, imagefile, images.PROGRAM_IMAGE, resolution)
+							channel["program_image_"..format], channel["program_image_"..format.."_base64"] = image:addchannellogo(channel.id, imagefile, images.PROGRAM_IMAGE, resolution)
 						end
 					end
 				elseif istag(m, "sources") then
@@ -393,7 +394,7 @@ local function parseprogramsxml(xml, channels)
 								local imageformats = string.explode(config.getstring("epg.bulsat.image.formats"), ",")
 								for _, format in ipairs(imageformats) do
 									local resolution = config.getstring("epg.bulsat.image."..format)
-									program["image_"..format] = image:addprogramimage(channelid, imagefile, imagename, resolution)
+									program["image_"..format], program["image_"..format.."_base64"] = image:addprogramimage(channelid, imagefile, imagename, resolution)
 								end
 							end
 						elseif istag(o, "audio") then
@@ -545,6 +546,7 @@ end
 -- updates Bulsat channels or programs and call sink callback for each new channel or program extracted
 function update(channelids, sink)
 	if not _channels then
+		local genresurl = config.getstring("epg.bulsat.url.genres")
 		local channelsurl = config.getstring("epg.bulsat.url.channels")
 		local xml, err = downloadxml(channelsurl)
 		if not xml then

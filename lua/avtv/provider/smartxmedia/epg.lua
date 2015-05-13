@@ -1,10 +1,10 @@
 -----------------------------------------------------------------------
 --                                                                   --
--- Copyright (C) 2007-2014,  AVIQ Bulgaria Ltd.                      --
+-- Copyright (C) 2007-2015,  Intelibo Ltd                            --
 --                                                                   --
 -- Project:       AVTV                                               --
 -- Filename:      epg.lua                                            --
--- Description:   SmartXMedia EPG provider                                --
+-- Description:   SmartXMedia EPG provider                           --
 --                                                                   --
 -----------------------------------------------------------------------
 
