@@ -290,10 +290,13 @@ local function parsechannelsxml(xml)
 				end
 			end
 
+			local skipchannelswithoutstream = "yes" == config.getstring("epg.bulsat.skip_channels_without_stream")
+
 			if not (channel.id and channel.title) then
 				logerror("skipping channel without id or title ("..channeltostring(channel)..")")
-			end
-			if not checkduplicates(channels, channel) then
+			elseif skipchannelswithoutstream and not channel.streams[1].url then
+				log.warn(_NAME..": skipping channel without stream ("..channeltostring(channel)..")")
+			elseif not checkduplicates(channels, channel) then
 				channels[channel.id] = channel
 				table.insert(channels, channel)
 			end
