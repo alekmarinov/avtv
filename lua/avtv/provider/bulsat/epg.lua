@@ -219,6 +219,7 @@ local function parsechannelsxml(xml)
 	end
 	local image = images.new("bulsat", images.MOD_CHANNEL)
 	local channels = {}
+	local skipchannels = {}
 	for j, k in ipairs(dom) do
 		if istag(k, "tv") then
 			local channel = {
@@ -296,6 +297,7 @@ local function parsechannelsxml(xml)
 				logerror("skipping channel without id or title ("..channeltostring(channel)..")")
 			elseif skipchannelswithoutstream and not channel.streams[1].url then
 				log.warn(_NAME..": skipping channel without stream ("..channeltostring(channel)..")")
+				skipchannels[channel.id] = true
 			elseif not checkduplicates(channels, channel) then
 				channels[channel.id] = channel
 				table.insert(channels, channel)
@@ -303,12 +305,12 @@ local function parsechannelsxml(xml)
 		end
 	end
 	image:close()
-	return channels
+	return channels, skipchannels
 end
 
 local _channels, _programsmap
 
-local function parseprogramsxml(xml, channels)
+local function parseprogramsxml(xml, channels, skipchannels)
 	local function istag(tag, name)
 		return type(tag) == "table" and string.lower(tag.tag) == name
 	end
@@ -367,7 +369,9 @@ local function parseprogramsxml(xml, channels)
 			}
 			local channelid = normchannelid(k.attr.channel)
 			if not channels[channelid] then
-				logerror("missing channel "..channelid.." for program on "..program.id)
+				if not skipchannels[channelid] then
+					logerror("missing channel "..channelid.." for program on "..program.id)
+				end
 			else
 				if mktimestamp(program.id) > timestamppast and mktimestamp(program.stop) < timestampfuture then
 					programsmap[channelid] = programsmap[channelid] or {}
@@ -557,12 +561,14 @@ function update(channelids, sink)
 			sendlogerrors()
 			return nil, err
 		end
-		_channels, err = parsechannelsxml(xml)
+		local skipchannelsorerr
+		_channels, skipchannelsorerr = parsechannelsxml(xml)
 		if not _channels then
-			logerror(err)
+			logerror(skipchannelsorerr)
 			sendlogerrors()
-			return nil, err
+			return nil, skipchannelsorerr
 		end
+
 		local programsurl = config.getstring("epg.bulsat.url.programs")
 		local xml, err = downloadxml(programsurl)
 		if not xml then
@@ -570,7 +576,7 @@ function update(channelids, sink)
 			sendlogerrors()
 			return nil, err
 		end
-		_programsmap, err = parseprogramsxml(xml, _channels)
+		_programsmap, err = parseprogramsxml(xml, _channels, skipchannelsorerr)
 		if not _programsmap then
 			logerror(err)
 			sendlogerrors()
