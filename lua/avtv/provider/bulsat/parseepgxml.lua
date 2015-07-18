@@ -151,7 +151,7 @@ function _M.parseprograms(xml, channels, skipchannels)
 			mul = -1
 		end
 		local offset = mul * (60 * 60 * tonumber(timespec:sub(17, 18)) + 60 * tonumber(timespec:sub(19, 20)))
-		-- timestamp = timestamp - 2 * offset
+		timestamp = timestamp - offset
 		local formated = os.date("%Y%m%d%H%M%S", timestamp)
 		--log.debug(_NAME..": mktime "..timespec.." -> "..formated.." with offset "..offset)
 		return formated
