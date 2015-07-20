@@ -95,7 +95,7 @@ function _M.parsechannels(jsontext)
 		channel.recordable = tonumber(channeljson.can_record) or 0
 		channel.streams[2].url = channeljson.ndvr
 		channel.pg = channeljson.pg
-		channel.radio = channeljson.radio == "true"
+		channel.radio = channeljson.radio
 
 		local skipchannelswithoutstream = "yes" == config.getstring("epg.bulsat.skip_channels_without_stream")
 
@@ -208,11 +208,15 @@ function _M.parseprograms(jsontext, channels, skipchannels)
 	image:close()
 
 	-- generate fake EPG data
+	log.info(_NAME..": generating fake EPG data")
 	local noepgdata = config.getstring("epg.bulsat.no_epg_data")
 	for _, channel in ipairs(channels) do
 		local channelid = channel.id
 		programsmap[channelid] = programsmap[channelid] or {}
 		local programs = programsmap[channelid]
+		table.sort(programs, function(p1, p2)
+			return p1.id < p2.id
+		end)
 
 		log.info(_NAME..": Generating fake EPG data for channel "..channelid.." for days since "..dayspast.." up to "..daysfuture)
 		local daystotal = daysfuture + dayspast
@@ -229,7 +233,6 @@ function _M.parseprograms(jsontext, channels, skipchannels)
 			programtime = programs[1].id
 			firstprogramtime = os.time{year=tonumber(string.sub(programtime, 1, 4)),month=tonumber(string.sub(programtime, 5, 6)), day=tonumber(string.sub(programtime, 7, 8)), hour=0, min=0, sec=0}
 		end
-
 		local stack = {}
 		local datetime = firstdatetime 
 		while datetime + HOURSECS < firstprogramtime do
