@@ -283,7 +283,7 @@ local function parsevoddetails(dom, vod, image)
 	local posterformats = string.explode(config.getstring("vod.bulsat.poster.formats"), ",")
 	for _, format in ipairs(posterformats) do
 		local resolution = config.getstring("vod.bulsat.poster."..format)
-		vod["poster_"..format] = image:addvodimage(vod.id, posterimage, resolution)
+		vod["poster_"..format], vod["poster_"..format.."_base64"] = image:addvodimage(vod.id, posterimage, resolution)
 	end
 	os.remove(posterimage)
 	return true

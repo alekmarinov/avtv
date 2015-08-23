@@ -218,22 +218,17 @@ function _M:addvodimage(vodid, imagepath, resolution)
 	local rc = os.execute(cmd)
 	if rc ~= 0 then
 		return nil, "Failed to execute "..cmd
-		--[[
-		-- fail back to simple copy
-		localpath = lfs.concatfilenames(self.dirstatic, imagename)
-		if self.deleteimageset[localpath] then
-			log.debug(_NAME..": undelete "..localpath)
-			self.deleteimageset[localpath] = nil
-		end
-		resultname = imagename
-		log.warn(_NAME..": "..cmd.." failed, copying "..imagepath.." -> "..localpath)
-		local ok, err = lfs.copy(imagepath, localpath) 
-		if not ok then
-			return nil, err
-		end
-		]]
 	end
-	return resultname
+
+	-- encode to base64
+	local file, err = io.open(localpath, "rb")
+	if not file then
+		return nil, err
+	end
+	local base64encoded = base64.encode(file:read("*a"))
+	file:close()
+
+	return resultname, base64encoded
 end
 
 -- closes the image manager
