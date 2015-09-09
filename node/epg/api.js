@@ -49,6 +49,7 @@ server.get(/v1\/(.*)/, function setETag(req, res, next) {
   var today = new Date();
   var etag = 'E-' + [today.getDate(), 1 + today.getMonth(), today.getFullYear()].join('.');
   res.setHeader('ETag', etag);
+  res.setHeader('Cache-Control', 'max-age=7200'); // 2 hours
   return next();
 }, restify.conditionalRequest(), apiv1);
 
