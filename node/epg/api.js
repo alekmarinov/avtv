@@ -42,8 +42,15 @@ server.use(restify.gzipResponse())
 server.use(restify.queryParser())
 
 var apiv1 = apiV1(pkg, redis.createClient())
-server.get(/v1\/(.*)/,apiv1)
+// server.get(/v1\/(.*)/, apiv1)
 server.post(/v1\/(.*)/, apiv1)
+
+server.get(/v1\/(.*)/, function setETag(req, res, next) {
+  var today = new Date();
+  var etag = 'E-' + [today.getDate(), 1 + today.getMonth(), today.getFullYear()].join('.');
+  res.setHeader('ETag', etag);
+  return next();
+}, restify.conditionalRequest(), apiv1);
 
 server.get(/\/static\/*.*/, restify.serveStatic({
   directory: config.get('static_dir')
